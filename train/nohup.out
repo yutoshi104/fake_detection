@@ -1,0 +1,164 @@
+/home/toshikawa/.pyenv/versions/3.6.8/bin/python: can't open file 'trian.py': [Errno 2] No such file or directory
+2021-12-29 23:32:51.796606: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-12-29 23:32:53.392458: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN)to use the following CPU instructions in performance-critical operations:  AVX2 FMA
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2021-12-29 23:32:53.428879: I tensorflow/core/platform/profile_utils/cpu_utils.cc:104] CPU Frequency: 2399955000 Hz
+2021-12-29 23:32:53.430695: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x5623c1c3b170 initialized for platform Host (this does not guarantee that XLA will be used). Devices:
+2021-12-29 23:32:53.430725: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): Host, Default Version
+2021-12-29 23:32:53.434090: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcuda.so.1
+2021-12-29 23:32:53.741787: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x5623c386b2e0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2021-12-29 23:32:53.741836: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): TITAN X (Pascal), Compute Capability 6.1
+2021-12-29 23:32:53.741849: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (1): TITAN X (Pascal), Compute Capability 6.1
+2021-12-29 23:32:53.746163: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 0 with properties: 
+pciBusID: 0000:82:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:53.748261: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 1 with properties: 
+pciBusID: 0000:83:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:53.748322: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-12-29 23:32:53.751628: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcublas.so.10
+2021-12-29 23:32:53.753874: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcufft.so.10
+2021-12-29 23:32:53.754425: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcurand.so.10
+2021-12-29 23:32:53.757528: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusolver.so.10
+2021-12-29 23:32:53.758962: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusparse.so.10
+2021-12-29 23:32:53.763330: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudnn.so.7
+2021-12-29 23:32:53.766166: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1858] Adding visible gpu devices: 0, 1
+2021-12-29 23:32:53.766206: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-12-29 23:32:54.554352: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1257] Device interconnect StreamExecutor with strength 1 edge matrix:
+2021-12-29 23:32:54.554397: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1263]      0 1 
+2021-12-29 23:32:54.554406: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1276] 0:   N Y 
+2021-12-29 23:32:54.554411: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1276] 1:   Y N 
+2021-12-29 23:32:54.556692: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1402] Created TensorFlow device (/device:GPU:0 with 11230 MB memory) -> physical GPU (device: 0, name: TITAN X (Pascal), pci bus id: 0000:82:00.0, compute capability: 6.1)
+2021-12-29 23:32:54.557875: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1402] Created TensorFlow device (/device:GPU:1 with 11230 MB memory) -> physical GPU (device: 1, name: TITAN X (Pascal), pci bus id: 0000:83:00.0, compute capability: 6.1)
+2021-12-29 23:32:54.559817: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 0 with properties: 
+pciBusID: 0000:82:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:54.560499: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 1 with properties: 
+pciBusID: 0000:83:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:54.560530: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-12-29 23:32:54.560567: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcublas.so.10
+2021-12-29 23:32:54.560584: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcufft.so.10
+2021-12-29 23:32:54.560600: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcurand.so.10
+2021-12-29 23:32:54.560616: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusolver.so.10
+2021-12-29 23:32:54.560631: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusparse.so.10
+2021-12-29 23:32:54.560648: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudnn.so.7
+2021-12-29 23:32:54.563220: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1858] Adding visible gpu devices: 0, 1
+2021-12-29 23:32:54.564298: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 0 with properties: 
+pciBusID: 0000:82:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:54.565032: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1716] Found device 1 with properties: 
+pciBusID: 0000:83:00.0 name: TITAN X (Pascal) computeCapability: 6.1
+coreClock: 1.531GHz coreCount: 28 deviceMemorySize: 11.91GiB deviceMemoryBandwidth: 447.48GiB/s
+2021-12-29 23:32:54.565054: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudart.so.10.1
+2021-12-29 23:32:54.565070: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcublas.so.10
+2021-12-29 23:32:54.565084: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcufft.so.10
+2021-12-29 23:32:54.565097: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcurand.so.10
+2021-12-29 23:32:54.565110: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusolver.so.10
+2021-12-29 23:32:54.565123: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcusparse.so.10
+2021-12-29 23:32:54.565136: I tensorflow/stream_executor/platform/default/dso_loader.cc:48] Successfully opened dynamic library libcudnn.so.7
+2021-12-29 23:32:54.567689: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1858] Adding visible gpu devices: 0, 1
+2021-12-29 23:32:54.567716: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1257] Device interconnect StreamExecutor with strength 1 edge matrix:
+2021-12-29 23:32:54.567725: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1263]      0 1 
+2021-12-29 23:32:54.567731: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1276] 0:   N Y 
+2021-12-29 23:32:54.567736: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1276] 1:   Y N 
+2021-12-29 23:32:54.569818: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1402] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 11230 MB memory) -> physical GPU (device: 0, name: TITAN X (Pascal), pci bus id: 0000:82:00.0, compute capability: 6.1)
+2021-12-29 23:32:54.570526: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1402] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:1 with 11230 MB memory) -> physical GPU (device: 1, name: TITAN X (Pascal), pci bus id: 0000:83:00.0, compute capability: 6.1)
+/home/toshikawa/.pyenv/versions/3.6.8/lib/python3.6/site-packages/tensorflow_addons/utils/ensure_tf_install.py:67: UserWarning: Tensorflow Addons supports using Python ops for all Tensorflow versions above or equal to 2.4.0 and strictly below 2.7.0 (nightly versions are not supported). 
+ The versions of TensorFlow you are currently using is 2.3.3 and is not supported. 
+Some things might work, some things might not.
+If you were to encounter a bug, do not file an issue.
+If you want to make sure you're using a tested and supported configuration, either change the TensorFlow version or the TensorFlow Addons's version. 
+You can find the compatibility matrix in TensorFlow Addon's readme:
+https://github.com/tensorflow/addons
+  UserWarning,
+2.3.3
+[name: "/device:CPU:0"
+device_type: "CPU"
+memory_limit: 268435456
+locality {
+}
+incarnation: 1909912782821753304
+, name: "/device:XLA_CPU:0"
+device_type: "XLA_CPU"
+memory_limit: 17179869184
+locality {
+}
+incarnation: 6084669231475462173
+physical_device_desc: "device: XLA_CPU device"
+, name: "/device:XLA_GPU:0"
+device_type: "XLA_GPU"
+memory_limit: 17179869184
+locality {
+}
+incarnation: 17851134320230662988
+physical_device_desc: "device: XLA_GPU device"
+, name: "/device:XLA_GPU:1"
+device_type: "XLA_GPU"
+memory_limit: 17179869184
+locality {
+}
+incarnation: 4544763809006485126
+physical_device_desc: "device: XLA_GPU device"
+, name: "/device:GPU:0"
+device_type: "GPU"
+memory_limit: 11775635648
+locality {
+  bus_id: 2
+  numa_node: 1
+  links {
+    link {
+      device_id: 1
+      type: "StreamExecutor"
+      strength: 1
+    }
+  }
+}
+incarnation: 4930917262354862590
+physical_device_desc: "device: 0, name: TITAN X (Pascal), pci bus id: 0000:82:00.0, compute capability: 6.1"
+, name: "/device:GPU:1"
+device_type: "GPU"
+memory_limit: 11775635648
+locality {
+  bus_id: 2
+  numa_node: 1
+  links {
+    link {
+      type: "StreamExecutor"
+      strength: 1
+    }
+  }
+}
+incarnation: 8695689628422991457
+physical_device_desc: "device: 1, name: TITAN X (Pascal), pci bus id: 0000:83:00.0, compute capability: 6.1"
+]
+START PROGRAM: 2021-12-29 23:32:54.558925
+Model: "Xception"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+xception (Functional)        (None, 8, 8, 2048)        20861480  
+_________________________________________________________________
+flatten (Flatten)            (None, 131072)            0         
+_________________________________________________________________
+dense (Dense)                (None, 256)               33554688  
+_________________________________________________________________
+dropout (Dropout)            (None, 256)               0         
+_________________________________________________________________
+dense_1 (Dense)              (None, 1)                 257       
+=================================================================
+Total params: 54,416,425
+Trainable params: 54,361,897
+Non-trainable params: 54,528
+_________________________________________________________________
+START CREATE GENERATOR: 2021-12-29 23:32:59.714550
+Traceback (most recent call last):
+  File "train.py", line 92, in <module>
+    image_path_list = sorted(glob.glob(data_dir+"/"+c+"/*"))
+  File "/home/toshikawa/.pyenv/versions/3.6.8/lib/python3.6/glob.py", line 20, in glob
+    return list(iglob(pathname, recursive=recursive))
+  File "/home/toshikawa/.pyenv/versions/3.6.8/lib/python3.6/glob.py", line 73, in _iglob
+    yield os.path.join(dirname, name)
+  File "/home/toshikawa/.pyenv/versions/3.6.8/lib/python3.6/posixpath.py", line 81, in join
+    sep = _get_sep(a)
+KeyboardInterrupt

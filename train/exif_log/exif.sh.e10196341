@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "checkExif.py", line 52, in <module>
+    a = get_exif_of_image(path)
+  File "checkExif.py", line 14, in get_exif_of_image
+    img = pyexiv2.Image(file)
+  File "/uge_mnt/home/toshi/.local/lib/python3.8/site-packages/pyexiv2/core.py", line 15, in __init__
+    self.img = exiv2api.Image(filename.encode(encoding))
+RuntimeError: Failed to read input data

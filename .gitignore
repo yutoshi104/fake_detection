@@ -1,0 +1,9 @@
+__pycache__/
+/model/
+/data/
+/preprocessing/logs1
+/preprocessing/logs2
+/preprocessing/logs3
+/train/train.sh.e*
+/train/train.sh.o*
+/train/myresult.txt

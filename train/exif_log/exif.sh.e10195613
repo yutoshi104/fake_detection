@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "checkExif.py", line 44, in <module>
+    a = get_exif_of_image(path)
+  File "checkExif.py", line 12, in get_exif_of_image
+    im = Image.open(file)
+  File "/uge_mnt/home/toshi/.local/lib/python3.8/site-packages/PIL/Image.py", line 3123, in open
+    raise UnidentifiedImageError(
+PIL.UnidentifiedImageError: cannot identify image file '../data/datas/Celeb-synthesis-image-face-90/id17_id26_0000_213.jpg'
