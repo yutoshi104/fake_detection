@@ -7,7 +7,6 @@ __pycache__/
 /train/train.sh.e*
 /train/train.sh.o*
 /train/myresult.txt
-
 !/model/**/history.json
 !/model/**/params.json
 !/model/**/result.png
