@@ -8,5 +8,5 @@ __pycache__/
 /train/train.sh.o*
 /train/myresult.txt
 
-!/model/**/*.json
-!/model/**/*.png
+!/model/*/*.json
+!/model/*/*.png
