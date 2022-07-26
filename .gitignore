@@ -6,6 +6,8 @@ __pycache__/
 /preprocessing/logs3
 /train/train.sh.e*
 /train/train.sh.o*
+/train/retrain.sh.e*
+/train/retrain.sh.o*
 /train/myresult.txt
 !/model/**/history.json
 !/model/**/params.json

@@ -15,21 +15,22 @@ from common_import import *
 print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
-retrain_dir = "Xception_20220720-133534_epoch30"
-retrain_epochs = 10
-gpu_count = 8
-
+retrain_dir = "OriginalNetNonDrop_20220724-005427_epoch30"
+retrain_epochs = 0
+gpu_count = 2
 
 
 ###パラメータ読込###
 model_dir = "/home/toshi/fake_detection/model/"
 params = loadParams(model_dir+retrain_dir+"/params.json")
+model_structure = params['model_structure']
 epochs = params['epochs']
 batch_size_per_gpu = params['batch_size_per_gpu']
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = params['validation_rate']
 test_rate = params['test_rate']
-cp_period = params['cp_period']
+# cp_period = params['cp_period']
+cp_period = 2
 data_dir = params['data_dir']
 classes = params['classes']
 image_size = tuple(params['image_size'])
@@ -50,7 +51,7 @@ print(params)
 ###トレーニングタイプ分類###
 # checkpointが存在しない場合は処理を終了
 # 期待されているエポックの学習が終わっていなかったらその学習を行う(train_flg)
-# 再学習エポックが指定されていたら再学習を行う(retrain_flg)
+# 再学習エポックが指定されていたら再学習を行う
 if 0 == len(glob.glob(model_dir+retrain_dir+'/checkpoint/*.h5')):
     print(retrain_dir+" has no checkpoint.")
     exit()
@@ -67,7 +68,7 @@ print(expect_epochs)
 print("saved epochs: ",end="")
 print(saved_epochs)
 
-train_flg = True if (expect_epochs > saved_epochs and not exist_learned_model) else False
+train_flg = True if (expect_epochs > saved_epochs or not exist_learned_model) else False
 retrian_flg = True if (retrain_epochs > 0) else False
 
 
@@ -210,13 +211,19 @@ def test_and_save_and_graph():
     makeGraph(history.history,model_dir)
 
 
+###ディレクトリパス###
+model_dir = model_dir+retrain_dir
+cp_dir = model_dir+'/checkpoint'
+
 
 ###中断した学習の再開###
 if train_flg:
 
-    ###ディレクトリパス###
-    model_dir = model_dir+retrain_dir
-    cp_dir = model_dir+'/checkpoint'
+    ###history修正###
+    his = loadParams(model_dir+"/history.json")
+    for key in his.keys():
+        his[key] = his[key][:saved_epochs]
+    saveParams(his,model_dir+"/history.json")
 
 
     ###callback作成###
@@ -231,7 +238,7 @@ if train_flg:
         )
         cb_list.append(es_callback)
     cp_callback = callbacks.ModelCheckpoint(
-        filepath=cp_dir+"/cp_model_{epoch+"+str(saved_epochs)+":03d}-{accuracy:.2f}.h5",
+        filepath=cp_dir+"/cp_model_"+str(saved_epochs)+"+{epoch:03d}-{accuracy:.2f}.h5",
         monitor='val_loss',
         mode='auto',
         save_best_only=False,
@@ -279,9 +286,11 @@ if train_flg:
 
 
 ###再学習###
-if retrain_flg:
+print(retrain_epochs)
+if retrain_epochs > 0:
 
     ###ディレクトリ作成###
+    past_model_dir = model_dir
     t = time.strftime("%Y%m%d-%H%M%S")
     model_dir = f'../model/{model_structure+"_retrain"}_{t}_epoch{expect_epochs+retrain_epochs}'
     os.makedirs(model_dir, exist_ok=True)
@@ -289,7 +298,8 @@ if retrain_flg:
     os.makedirs(cp_dir, exist_ok=True)
 
     ###パラメータ保存###
-    params['epoch'] = expect_epochs + retrain_epochs
+    params['total_epoch'] = (params['total_epoch'] if 'total_epoch' in params else expect_epochs) + retrain_epochs
+    params['past_model_dir'] = past_model_dir
     saveParams(params,filename=model_dir+"/params.json")
 
     ###callback作成###
@@ -304,7 +314,7 @@ if retrain_flg:
         )
         cb_list.append(es_callback)
     cp_callback = callbacks.ModelCheckpoint(
-        filepath=cp_dir+"/cp_model_{epoch+"+str(expect_epochs)+":03d}-{accuracy:.2f}.h5",
+        filepath=cp_dir+"/cp_model_"+str(expect_epochs)+"+{epoch:03d}-{accuracy:.2f}.h5",
         monitor='val_loss',
         mode='auto',
         save_best_only=False,

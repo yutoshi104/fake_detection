@@ -29,8 +29,8 @@ from tensorflow.python.keras import metrics
 from tensorflow.python.keras.datasets import cifar10
 from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
 import tensorflow as tf
-from tensorflow.python.keras.utils.multi_gpu_utils import multi_gpu_model
-import tensorflow.python.keras.backend as K
+# from tensorflow.python.keras.utils.multi_gpu_utils import multi_gpu_model
+# import tensorflow.python.keras.backend as K
 
 # from sklearn.metrics import roc_curve
 # from sklearn.metrics import auc
@@ -68,6 +68,7 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 print(tf.__version__)
 print(device_lib.list_local_devices())
+# print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
     
 
 ### ROC AUC ###
@@ -926,7 +927,7 @@ def loadOriginalNetNonDrop(input_shape=(480,640,3),gpu_count=2):
         # x = layers.Dropout(0.5)(x)
         x = layers.Dense(1, activation='sigmoid')(x)
 
-        model = models.Model(inputs=inputs, outputs=x, name="OriginalNet")
+        model = models.Model(inputs=inputs, outputs=x, name="OriginalNetNonDrop")
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),

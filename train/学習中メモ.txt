@@ -1,0 +1,6 @@
+job-ID：説明
+
+
+10271324：LightInceptionNetのドロップアウトなしで30エポック
+
+：LightInceptionNetで30エポックの続き(OriginalNet_20220723-000032_epoch30の続き)

@@ -12,6 +12,7 @@
 
 # package install
 . ~/proxy.sh
+export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 /usr/bin/python -m pip install --upgrade pip
 # /usr/bin/python -m pip uninstall --yes opencv-python

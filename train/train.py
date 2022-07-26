@@ -18,11 +18,11 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 # model_structure = "SampleCnn"
 # model_structure = "Vgg16"
 # model_structure = "InceptionV3"
-model_structure = "Xception"
+# model_structure = "Xception"
 # model_structure = "EfficientNetV2"
-# model_structure = "OriginalNet"
+model_structure = "OriginalNet"
 # model_structure = "OriginalNetNonDrop"
-epochs = 10
+epochs = 50
 gpu_count = 8
 batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
@@ -37,8 +37,8 @@ data_dir = '/hss/gaisp/morilab/toshi/fake_detection/data'
 classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
 # image_size = (480, 640, 3)
 # image_size = (240, 320, 3)
-# image_size = (256, 256, 3)
-image_size = (128, 128, 3)
+image_size = (256, 256, 3)
+# image_size = (128, 128, 3)
 es_flg = False
 
 
@@ -189,6 +189,7 @@ os.makedirs(cp_dir, exist_ok=True)
 
 ###パラメータ保存###
 params = {}
+params["model_structure"] = model_structure
 params["epochs"] = epochs
 params["batch_size_per_gpu"] = batch_size_per_gpu
 params["validation_rate"] = validation_rate
