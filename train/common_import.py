@@ -69,6 +69,8 @@ from tensorflow.python.client import device_lib
 print(tf.__version__)
 print(device_lib.list_local_devices())
 # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
+strategy = tf.distribute.MirroredStrategy()
     
 
 ### ROC AUC ###
@@ -153,8 +155,7 @@ def getMetrics(mode=None):
 
 
 ### CNN 2値分類 ###
-def loadSampleCnn(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadSampleCnn(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="SampleCNN")
         model.add(layers.Conv2D(16, (3, 3), activation='relu', data_format='channels_last', input_shape=input_shape))
@@ -183,6 +184,9 @@ def loadSampleCnn(input_shape=(480,640,3),gpu_count=2):
         model.add(layers.Dense(256, activation='relu'))
         model.add(layers.Dropout(0.1))
         model.add(layers.Dense(1, activation='sigmoid'))
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -192,8 +196,7 @@ def loadSampleCnn(input_shape=(480,640,3),gpu_count=2):
 
 
 ### CNN VGG16 ###
-def loadVgg16(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadVgg16(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         # input_tensor = models.Input(shape=input_shape)
         # vgg16 = applications.vgg16.VGG16(include_top=False, weights=None, input_tensor=input_tensor)
@@ -237,6 +240,8 @@ def loadVgg16(input_shape=(480,640,3),gpu_count=2):
         # model.add(layers.Dropout(0.5))
         # model.add(layers.Dense(1, activation='softmax'))
 
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -245,8 +250,7 @@ def loadVgg16(input_shape=(480,640,3),gpu_count=2):
     return model
 
 ### CNN Inception ###
-def loadInceptionV3(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadInceptionV3(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="InceptionV3")
         model.add(applications.inception_v3.InceptionV3(include_top=False, weights=None, input_shape=input_shape))
@@ -257,6 +261,8 @@ def loadInceptionV3(input_shape=(480,640,3),gpu_count=2):
         model.add(layers.Activation('relu'))
         model.add(layers.Dropout(0.5))
         model.add(layers.Dense(1, activation='sigmoid'))
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -265,8 +271,7 @@ def loadInceptionV3(input_shape=(480,640,3),gpu_count=2):
     return model
 
 ### CNN Xception ###
-def loadXception(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadXception(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="Xception")
         model.add(applications.xception.Xception(include_top=False, weights=None, input_shape=input_shape))
@@ -277,6 +282,8 @@ def loadXception(input_shape=(480,640,3),gpu_count=2):
         model.add(layers.Activation('relu'))
         # model.add(layers.Dropout(0.5))
         model.add(layers.Dense(1, activation='sigmoid'))
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             # optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -286,8 +293,7 @@ def loadXception(input_shape=(480,640,3),gpu_count=2):
     return model
 
 ### CNN Xception (素) ###
-def loadXceptionOriginal(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadXceptionOriginal(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         inputs = keras.Input(shape=input_shape)
 
@@ -372,6 +378,8 @@ def loadXceptionOriginal(input_shape=(480,640,3),gpu_count=2):
 
         model = models.Model(inputs=inputs, outputs=x)
 
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -380,8 +388,7 @@ def loadXceptionOriginal(input_shape=(480,640,3),gpu_count=2):
     return model
 
 ### CNN EfficientNetV2 ###
-def loadEfficientNetV2(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadEfficientNetV2(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="EfficientNetV2")
         model.add(layers.InputLayer(input_shape=input_shape))
@@ -389,6 +396,9 @@ def loadEfficientNetV2(input_shape=(480,640,3),gpu_count=2):
         model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-b3', include_top=False))
         model.add(layers.Dropout(rate=0.2))
         model.add(layers.Dense(1, activation='sigmoid'))
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -500,8 +510,7 @@ def original_net(inputs,output_filter=128):
 #     x = layers.Activation('relu')(x)
 #     return x
 
-def loadOriginalNet(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadOriginalNet(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         inputs = keras.Input(shape=input_shape)
         x = inputs
@@ -803,6 +812,9 @@ def loadOriginalNet(input_shape=(480,640,3),gpu_count=2):
         x = layers.Dense(1, activation='sigmoid')(x)
 
         model = models.Model(inputs=inputs, outputs=x, name="OriginalNet")
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -811,8 +823,7 @@ def loadOriginalNet(input_shape=(480,640,3),gpu_count=2):
     return model
 
 
-def loadOriginalNetNonDrop(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadOriginalNetNonDrop(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         inputs = keras.Input(shape=input_shape)
         x = inputs
@@ -928,6 +939,9 @@ def loadOriginalNetNonDrop(input_shape=(480,640,3),gpu_count=2):
         x = layers.Dense(1, activation='sigmoid')(x)
 
         model = models.Model(inputs=inputs, outputs=x, name="OriginalNetNonDrop")
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
@@ -944,8 +958,7 @@ def loadOriginalNetNonDrop(input_shape=(480,640,3),gpu_count=2):
 
 
 ### CNN AutoEncoder ###
-def loadAutoEncoder(input_shape=(480,640,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadAutoEncoder(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         input_img = models.Input(shape=input_shape)
         x = layers.Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform', padding='same')(input_img)
@@ -990,6 +1003,9 @@ def loadAutoEncoder(input_shape=(480,640,3),gpu_count=2):
         x = layers.Conv2D(16, (3, 3), activation='relu', kernel_initializer='he_uniform', padding='same')(x)
         y = layers.Conv2D(3, (3, 3), activation='sigmoid', kernel_initializer='he_uniform', padding='same')(x)
         model = models.Model(inputs=input_img, outputs=y)
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='mean_squared_error',
             optimizer=optimizers.Adam(lr=1e-4),
@@ -1000,8 +1016,7 @@ def loadAutoEncoder(input_shape=(480,640,3),gpu_count=2):
 
 
 ### RNN ###
-def loadSampleRnn(input_shape=(5,256,256,3),gpu_count=2):
-    strategy = tf.distribute.MirroredStrategy()
+def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
     with strategy.scope():
         inputs = layers.Input(shape=input_shape)
         x0 = layers.ConvLSTM2D(filters=16, kernel_size=(3,3), padding="same", return_sequences=True, data_format="channels_last")(inputs)
@@ -1017,6 +1032,9 @@ def loadSampleRnn(input_shape=(5,256,256,3),gpu_count=2):
         output = layers.Dense(1, activation='sigmoid')(x0)
         # output = layers.Activation('tanh')(x0)
         model = models.Model(inputs=inputs, outputs=output)
+
+        if weights_path != None:
+            model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),

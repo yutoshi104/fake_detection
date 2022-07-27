@@ -1,6 +1,6 @@
 job-ID：説明
 
 
-10271324：LightInceptionNetのドロップアウトなしで30エポック
-
-：LightInceptionNetで30エポックの続き(OriginalNet_20220723-000032_epoch30の続き)
+10309821：LightInceptionの効果検証(50エポック)
+10309833：LightInceptionのDropoutなしの効果検証(50エポック)
+10309841：LightInceptionの学習(100エポック)

@@ -22,7 +22,7 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 # model_structure = "EfficientNetV2"
 model_structure = "OriginalNet"
 # model_structure = "OriginalNetNonDrop"
-epochs = 50
+epochs = 100
 gpu_count = 8
 batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
@@ -43,29 +43,29 @@ es_flg = False
 
 
 ###data augmentation###
-# rotation_range=15.0
-# width_shift_range=0.15
-# height_shift_range=0.15
-# brightness_range = None
-# shear_range=0.0
-# zoom_range=0.1
-# channel_shift_range = 0.0
-# horizontal_flip=True
-# vertical_flip=False
-###data augmentation (初期値)###
-rotation_range=0.0
-width_shift_range=0.0
-height_shift_range=0.0
+rotation_range=15.0
+width_shift_range=0.15
+height_shift_range=0.15
 brightness_range = None
 shear_range=0.0
-zoom_range=0.0
+zoom_range=0.1
 channel_shift_range = 0.0
-horizontal_flip=False
+horizontal_flip=True
 vertical_flip=False
+###data augmentation (初期値)###
+# rotation_range=0.0
+# width_shift_range=0.0
+# height_shift_range=0.0
+# brightness_range = None
+# shear_range=0.0
+# zoom_range=0.0
+# channel_shift_range = 0.0
+# horizontal_flip=False
+# vertical_flip=False
 
 
 ###モデルの生成###
-model = globals()['load'+model_structure](input_shape=image_size,gpu_count=gpu_count)
+model = globals()['load'+model_structure](input_shape=image_size)
 # model.summary()
 
 

@@ -15,9 +15,10 @@ from common_import import *
 print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
+# retrain_dir = "OriginalNet_20220723-000032_epoch30"
 retrain_dir = "OriginalNetNonDrop_20220724-005427_epoch30"
 retrain_epochs = 0
-gpu_count = 2
+gpu_count = 8
 
 
 ###パラメータ読込###
@@ -29,8 +30,8 @@ batch_size_per_gpu = params['batch_size_per_gpu']
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = params['validation_rate']
 test_rate = params['test_rate']
-# cp_period = params['cp_period']
-cp_period = 2
+cp_period = params['cp_period']
+# cp_period = 2
 data_dir = params['data_dir']
 classes = params['classes']
 image_size = tuple(params['image_size'])
@@ -74,7 +75,7 @@ retrian_flg = True if (retrain_epochs > 0) else False
 
 
 ###モデルの読み込み###
-model = models.load_model(newest_checkpoint_path)
+model = globals()['load'+model_structure](input_shape=image_size,weights_path=newest_checkpoint_path)
 model.summary()
 
 
