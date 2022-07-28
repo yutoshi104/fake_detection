@@ -1,6 +1,6 @@
 job-ID：説明
 
 
-10309821：LightInceptionの効果検証(50エポック)
-10309833：LightInceptionのDropoutなしの効果検証(50エポック)
-10309841：LightInceptionの学習(100エポック)
+10325667：LightInceptionの効果検証(50エポック)(再学習)
+10325675：LightInceptionのDropoutなしの効果検証(50エポック)(再学習)
+10325648：LightInceptionの学習(100エポック)

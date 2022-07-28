@@ -15,8 +15,8 @@ from common_import import *
 print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
-# retrain_dir = "OriginalNet_20220723-000032_epoch30"
-retrain_dir = "OriginalNetNonDrop_20220724-005427_epoch30"
+# retrain_dir = "OriginalNet_20220727-143652_epoch50"
+retrain_dir = "OriginalNetNonDrop_20220727-100342_epoch50"
 retrain_epochs = 0
 gpu_count = 8
 
@@ -299,6 +299,7 @@ if retrain_epochs > 0:
     os.makedirs(cp_dir, exist_ok=True)
 
     ###パラメータ保存###
+    params['epochs'] = expect_epochs+retrain_epochs
     params['total_epoch'] = (params['total_epoch'] if 'total_epoch' in params else expect_epochs) + retrain_epochs
     params['past_model_dir'] = past_model_dir
     saveParams(params,filename=model_dir+"/params.json")

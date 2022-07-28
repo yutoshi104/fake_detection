@@ -43,30 +43,30 @@ es_flg = False
 
 
 ###data augmentation###
-rotation_range=15.0
-width_shift_range=0.15
-height_shift_range=0.15
-brightness_range = None
-shear_range=0.0
-zoom_range=0.1
-channel_shift_range = 0.0
-horizontal_flip=True
-vertical_flip=False
-###data augmentation (初期値)###
-# rotation_range=0.0
-# width_shift_range=0.0
-# height_shift_range=0.0
+# rotation_range=15.0
+# width_shift_range=0.15
+# height_shift_range=0.15
 # brightness_range = None
 # shear_range=0.0
-# zoom_range=0.0
+# zoom_range=0.1
 # channel_shift_range = 0.0
-# horizontal_flip=False
+# horizontal_flip=True
 # vertical_flip=False
+###data augmentation (初期値)###
+rotation_range=0.0
+width_shift_range=0.0
+height_shift_range=0.0
+brightness_range = None
+shear_range=0.0
+zoom_range=0.0
+channel_shift_range = 0.0
+horizontal_flip=False
+vertical_flip=False
 
 
 ###モデルの生成###
 model = globals()['load'+model_structure](input_shape=image_size)
-# model.summary()
+model.summary()
 
 
 ###Generator作成###
