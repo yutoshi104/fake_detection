@@ -149,12 +149,12 @@ def image2face(src_path, dst_directory, del_flg=False, square_size=None, padding
 
 if __name__=='__main__':
     ###パラメータ###
-    # src_directory = "../data/datas/Celeb-real-image"
+    src_directory = "../data/datas/Celeb-real-image"
     # # dst_directory = "../data/datas/Celeb-real-image-face-90"
-    # dst_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-real-image-face-90"
-    src_directory = "../data/datas/Celeb-synthesis-image"
+    dst_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-real-image-face-90"
+    # src_directory = "../data/datas/Celeb-synthesis-image"
     # dst_directory = "../data/datas/Celeb-synthesis-image-face-90"
-    dst_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-synthesis-image-face-90"
+    # dst_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-synthesis-image-face-90"
     del_flg = False
     square_size = 256
     padding_rate = 0.1

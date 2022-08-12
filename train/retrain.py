@@ -15,10 +15,11 @@ from common_import import *
 print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
-# retrain_dir = "OriginalNet_20220727-143652_epoch50"
-retrain_dir = "OriginalNetNonDrop_20220727-100342_epoch50"
+# retrain_dir = "OriginalNet_20220731-130612_epoch50"
+# retrain_dir = "OriginalNetNonDrop_20220731-131333_epoch50"
+retrain_dir = "OriginalNet_20220730-001852_epoch100"
 retrain_epochs = 0
-gpu_count = 8
+gpu_count = 32
 
 
 ###パラメータ読込###
@@ -61,7 +62,11 @@ exist_learned_model = True if 0!=len(glob.glob(model_dir+retrain_dir+'/model.h5'
 newest_checkpoint_path = list(sorted(glob.glob(model_dir+retrain_dir+'/checkpoint/*.h5')))[-1]
 # expect_epochs = int(re.findall(r'^.+epoch_(\d+).+?$', retrain_dir)[0])
 expect_epochs = epochs
-saved_epochs = int(re.findall(r'^cp_model_(\d+)-.+?\.h5$', os.path.basename(newest_checkpoint_path))[0])
+e = re.findall(r'^cp_model_(\d+)\+?(\d+)?-.+?\.h5$', os.path.basename(newest_checkpoint_path))
+if e[0][1]=='':
+    saved_epochs = int(e[0][0])
+else:
+    saved_epochs = int(e[0][0]) + int(e[0][1])
 
 print(newest_checkpoint_path)
 print("expected epochs: ",end="")

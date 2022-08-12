@@ -18,18 +18,18 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 # model_structure = "SampleCnn"
 # model_structure = "Vgg16"
 # model_structure = "InceptionV3"
-# model_structure = "Xception"
+model_structure = "Xception"
 # model_structure = "EfficientNetV2"
-model_structure = "OriginalNet"
+# model_structure = "OriginalNet"
 # model_structure = "OriginalNetNonDrop"
-epochs = 100
+epochs = 15
 gpu_count = 8
 batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
 test_rate = 0.1
 # ↑動画ごとに分けているので最終的な画像でのデータ数はだいたい...
-cp_period = 5
+cp_period = 2
 # data_dir = '../data/datas'
 data_dir = '/hss/gaisp/morilab/toshi/fake_detection/data'
 # classes = ['yuto', 'b']
@@ -43,25 +43,25 @@ es_flg = False
 
 
 ###data augmentation###
-# rotation_range=15.0
-# width_shift_range=0.15
-# height_shift_range=0.15
-# brightness_range = None
-# shear_range=0.0
-# zoom_range=0.1
-# channel_shift_range = 0.0
-# horizontal_flip=True
-# vertical_flip=False
-###data augmentation (初期値)###
-rotation_range=0.0
-width_shift_range=0.0
-height_shift_range=0.0
+rotation_range=15.0
+width_shift_range=0.15
+height_shift_range=0.15
 brightness_range = None
 shear_range=0.0
-zoom_range=0.0
+zoom_range=0.1
 channel_shift_range = 0.0
-horizontal_flip=False
+horizontal_flip=True
 vertical_flip=False
+###data augmentation (初期値)###
+# rotation_range=0.0
+# width_shift_range=0.0
+# height_shift_range=0.0
+# brightness_range = None
+# shear_range=0.0
+# zoom_range=0.0
+# channel_shift_range = 0.0
+# horizontal_flip=False
+# vertical_flip=False
 
 
 ###モデルの生成###
