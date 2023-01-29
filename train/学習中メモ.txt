@@ -4,7 +4,7 @@ job-ID：説明
 ：LightInceptionの効果検証(50エポック)
 ：LightInceptionのDropoutなしの効果検証(50エポック)
 
-10566869：LightInceptionの学習(100エポック)(再学習)
+10659714：LightInceptionの学習(100エポック)(再学習)
 
 ：LightInceptionのDropoutなし(15エポック)(性能評価)
 ：XceptionのDropoutなし(15エポック)(性能評価)

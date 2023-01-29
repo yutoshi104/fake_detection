@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import cv2
 from tensorflow.python.keras.backend import dtype
 from tensorflow.python.keras.preprocessing.image import Iterator
 from tensorflow.python.keras.preprocessing.image import load_img,img_to_array
@@ -37,6 +38,7 @@ class ImageIterator(Iterator):
             cval=0.0,
             horizontal_flip=False,
             vertical_flip=False,
+            edge=None,
             rescale=None,
             preprocessing_function=None,
             data_format='channels_last',
@@ -44,6 +46,7 @@ class ImageIterator(Iterator):
         self.data = data
         self.target_size = target_size
         self.color_mode = color_mode
+        self.channel = 1 if self.color_mode=="grayscale" else (3 if self.color_mode=="rgb" else 4)
         self.rotation_range = rotation_range
         self.width_shift_range = width_shift_range
         self.height_shift_range = height_shift_range
@@ -57,6 +60,7 @@ class ImageIterator(Iterator):
         self.cval = cval
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
+        self.edge_type = edge
         self.rescale = rescale
         self.preprocessing_function = preprocessing_function
         self.data_format = data_format
@@ -73,11 +77,10 @@ class ImageIterator(Iterator):
 
 
     def _get_batches_of_transformed_samples(self, index_array):
-        channel = 1 if self.color_mode=="grayscale" else (3 if self.color_mode=="rgb" else 4)
         if self.data_format=="channels_last":
-            x = np.zeros((len(index_array),)+self.target_size+(channel,), dtype=np.float32)
+            x = np.zeros((len(index_array),)+self.target_size+(self.channel,), dtype=np.float32)
         else:
-            x = np.zeros((len(index_array),)+(channel,)+self.target_size, dtype=np.float32)
+            x = np.zeros((len(index_array),)+(self.channel,)+self.target_size, dtype=np.float32)
         y = np.zeros((len(index_array),1), dtype=np.float32)
         for i,idx in enumerate(index_array):
             path_data = self.data[idx]
@@ -88,6 +91,8 @@ class ImageIterator(Iterator):
                 img = self.preprocess(img)
             else:
                 img = self.preprocessing_function(img)
+            # edge
+            img = self.edge(img)
             # augmentationを実行
             img = self.rotate(img)
             img = self.shift(img)
@@ -166,3 +171,19 @@ class ImageIterator(Iterator):
         if self.vertical_flip and np.random.rand()<0.5:
             image = np.flipud(image)
         return image
+
+    def edge(self,image):
+        if self.color_mode=='grayscale' and self.edge_type!=None:
+            if self.edge_type=='sobel':
+                image = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize=3)
+            elif self.edge_type=='laplacian':
+                image = cv2.Laplacian(image, cv2.CV_32F)
+            elif self.edge_type=='scharr':
+                image = cv2.Sobel(image, cv2.CV_32F, 1, 0, ksize=-1)
+            elif self.edge_type=='canny':
+                image = cv2.Canny(image, 100, 200).astype(np.float32)
+            image = image.reshape(self.target_size+(self.channel,))
+        return image
+
+    def len(self):
+        return len(self.data)

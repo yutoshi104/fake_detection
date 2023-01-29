@@ -1,0 +1,8 @@
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: pip in /uge_mnt/home/toshi/.local/lib/python3.8/site-packages (22.3.1)
+/bin/dash: 1: qstat: not found
+array([], dtype=float64)
+Traceback (most recent call last):
+  File "cron.py", line 15, in <module>
+    print(qstat[:, 2])
+IndexError: too many indices for array

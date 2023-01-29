@@ -12,4 +12,4 @@
 . ~/proxy.sh
 
 # execute python script
-/usr/bin/python image2face.py
+/usr/bin/python image2edge.py

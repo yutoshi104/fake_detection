@@ -22,8 +22,10 @@ import os
 import tensorflow.python.keras as keras
 from tensorflow.python.keras import layers
 from tensorflow.python.keras import models
-from tensorflow.python.keras import applications
+# from tensorflow.python.keras import applications
+from tensorflow.keras import applications
 from tensorflow.keras import optimizers
+# from keras import optimizers
 from tensorflow.python.keras import callbacks
 from tensorflow.python.keras import metrics
 from tensorflow.python.keras.datasets import cifar10
@@ -46,6 +48,7 @@ import re
 import time
 import datetime
 import os
+import sys
 import random
 import math
 import copy
@@ -66,7 +69,7 @@ from ImageSequenceIterator import *
 ### GPU稼働確認 ###
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-print(tf.__version__)
+print("tf version: "+tf.__version__)
 print(device_lib.list_local_devices())
 # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
@@ -488,45 +491,46 @@ def original_net(inputs,output_filter=128):
     # x = layers.BatchNormalization()(x)
     return x
 
-# def original_net2(inputs,output_filter=128):
-#     cell_num = 8
-#     x = inputs
-#     cell1 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell2 = layers.MaxPool2D(pool_size=(2,2),strides=1,padding="same")(x)
-#     cell2 = layers.Conv2D(output_filter//cell_num,1,padding="same")(cell2)
-#     cell3 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell3 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell3)
-#     cell4 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell4 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell4)
-#     cell4 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell4)
-#     cell5 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell5 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell5)
-#     cell5 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell5)
-#     cell5 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell5)
-#     cell6 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell6 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell6)
-#     cell6 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell6)
-#     cell6 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell6)
-#     cell6 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell6)
-#     cell7 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell7 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell7)
-#     cell7 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell7)
-#     cell7 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell7)
-#     cell7 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell7)
-#     cell7 = layers.Conv2D(output_filter//cell_num,11,padding="same")(cell7)
-#     cell8 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
-#     cell8 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell8)
-#     cell8 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell8)
-#     cell8 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell8)
-#     cell8 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell8)
-#     cell8 = layers.Conv2D(output_filter//cell_num,11,padding="same")(cell8)
-#     cell8 = layers.Conv2D(output_filter//cell_num,13,padding="same")(cell8)
-#     x = layers.Concatenate()([cell1,cell2,cell3,cell4,cell5,cell6,cell7,cell8])
+def original_net2(inputs,output_filter=128):
+    cell_num = 8
+    x = inputs
+    cell1 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell2 = layers.MaxPool2D(pool_size=(2,2),strides=1,padding="same")(x)
+    cell2 = layers.Conv2D(output_filter//cell_num,1,padding="same")(cell2)
+    cell3 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell3 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell3)
+    cell4 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell4 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell4)
+    cell4 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell4)
+    cell5 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell5 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell5)
+    cell5 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell5)
+    cell5 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell5)
+    cell6 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell6 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell6)
+    cell6 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell6)
+    cell6 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell6)
+    cell6 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell6)
+    cell7 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell7 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell7)
+    cell7 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell7)
+    cell7 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell7)
+    cell7 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell7)
+    cell7 = layers.Conv2D(output_filter//cell_num,11,padding="same")(cell7)
+    cell8 = layers.Conv2D(output_filter//cell_num,1,padding="same")(x)
+    cell8 = layers.Conv2D(output_filter//cell_num,3,padding="same")(cell8)
+    cell8 = layers.Conv2D(output_filter//cell_num,5,padding="same")(cell8)
+    cell8 = layers.Conv2D(output_filter//cell_num,7,padding="same")(cell8)
+    cell8 = layers.Conv2D(output_filter//cell_num,9,padding="same")(cell8)
+    cell8 = layers.Conv2D(output_filter//cell_num,11,padding="same")(cell8)
+    cell8 = layers.Conv2D(output_filter//cell_num,13,padding="same")(cell8)
+    x = layers.Concatenate()([cell1,cell2,cell3,cell4,cell5,cell6,cell7,cell8])
 
-#     x = layers.SeparableConv2D(output_filter, (3,3), strides=2, padding='same')(x)
-#     x = layers.BatchNormalization()(x)
-#     x = layers.Activation('relu')(x)
-#     return x
+    x = layers.SeparableConv2D(output_filter, (3,3), strides=2, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    return x
+
 
 def loadOriginalNet(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
@@ -1056,9 +1060,15 @@ def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
         model.compile(
             loss='binary_crossentropy',
             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
-            metrics=[metrics.Accuracy(), metrics.AUC(), metrics.Precision(), metrics.Recall() , metrics.TruePositives(), metrics.TrueNegatives(), metrics.FalsePositives(), metrics.FalseNegatives()]
+            metrics=getMetrics("all")
         )
     return model
+
+
+
+
+
+
 
 
 
@@ -1077,7 +1087,7 @@ def loadParams(filename="./params.json"):
     return params
 
 
-### モデルテスト ###
+### モデルテスト(画像単位) ###
 def testModel(model,test_generator):
     print(f"START TEST: {datetime.datetime.now()}")
     loss_and_metrics = model.evaluate_generator(
@@ -1093,6 +1103,31 @@ def testModel(model,test_generator):
     print("Test FP:",loss_and_metrics[7])
     print("Test FN:",loss_and_metrics[8])
     print(f"FINISH TEST: {datetime.datetime.now()}")
+
+
+### モデルテスト(動画単位) ###
+def testModel_Movie(model,test_generator):
+    print(f"START TEST (Movie): {datetime.datetime.now()}")
+
+    exit()
+    # idごとにgeneratorを作成→リストに格納
+    # for generator_list:
+        # evaluate(generator)
+        # フェイクが1枚でもあったらフェイク判定
+
+    loss_and_metrics = model.evaluate_generator(
+        test_generator
+    )
+    print("Test loss:",loss_and_metrics[0])
+    print("Test accuracy:",loss_and_metrics[1])
+    print("Test AUC:",loss_and_metrics[2])
+    print("Test Precision:",loss_and_metrics[3])
+    print("Test Recall:",loss_and_metrics[4])
+    print("Test TP:",loss_and_metrics[5])
+    print("Test TN:",loss_and_metrics[6])
+    print("Test FP:",loss_and_metrics[7])
+    print("Test FN:",loss_and_metrics[8])
+    print(f"FINISH TEST (Movie): {datetime.datetime.now()}")
 
 
 ### モデル保存 ###
@@ -1119,6 +1154,14 @@ def makeGraph(history,model_dir):
         plt.legend(['accuracy','val_accuracy'], loc='best')
         fig.savefig(model_dir+"/result.png")
         # plt.show()
+    except NameError:
+        print("The graph could not be saved because the process was interrupted.")
+
+
+### グラフ作成(ROC曲線) ###
+def makeROC(history,model_dir):
+    try:
+        pass
     except NameError:
         print("The graph could not be saved because the process was interrupted.")
 
@@ -1177,3 +1220,355 @@ class saveHistory(callbacks.Callback):
         self.history["val_false_negatives"].append(logs.get('val_false_negatives'))
         with open(self.filepath, 'w') as f:
             json.dump(self.history, f, indent=2, sort_keys=False, ensure_ascii=False)
+
+
+### Celebのimage_generator作成 ###
+def makeImageDataGenerator_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        validation_rate=0.1,
+        test_rate=0.1,
+        batch_size=32,
+        image_size=(256,256,3),
+        rotation_range=15.0,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        brightness_range=None,
+        shear_range=0.0,
+        zoom_range=0.1,
+        channel_shift_range=0.0,
+        horizontal_flip=True,
+        vertical_flip=False,
+        edge=None
+    ):
+    if image_size[2]==1:
+        color_mode = 'grayscale'
+    else:
+        color_mode = 'rgb'
+    class_file_num = {}
+    class_weights = {}
+    train_data = []
+    validation_data = []
+    test_data = []
+    train_rate = 1 - validation_rate - test_rate
+    s1 = (int)(59*train_rate)
+    s2 = (int)(59*(train_rate+validation_rate))
+    id_list = list(range(62))
+    id_list.remove(14)
+    id_list.remove(15)
+    id_list.remove(18)
+    # random.shuffle(id_list)
+    train_id_list = id_list[ : s1]
+    validation_id_list = id_list[s1 : s2]
+    test_id_list = id_list[s2 : ]
+    print("\tTRAIN IMAGE DATA ID: ",end="")
+    print(train_id_list)
+    print("\tVALIDATION IMAGE DATA ID: ",end="")
+    print(validation_id_list)
+    print("\tTEST IMAGE DATA ID: ",end="")
+    print(test_id_list)
+    del id_list
+    data_num = 0
+    for l,c in enumerate(classes):
+        image_path_list = sorted(glob.glob(data_dir+"/"+c+"/*"))
+        path_num = len(image_path_list)
+        data_num += path_num
+        regexp = r'^.+?id(?P<id>(\d+))(_id(?P<id2>\d+))?_(?P<key>\d+)_(?P<num>\d+).(?P<ext>.{2,4})$'
+        past_path = image_path_list[0]
+        movie_image_list = []
+        for i in range(1,len(image_path_list)):
+            past_ids = re.search(regexp,past_path).groupdict()
+            now_ids = re.search(regexp,image_path_list[i]).groupdict()
+            if (past_ids['id']==now_ids['id']) and (past_ids['id2']==None or past_ids['id2']==now_ids['id2']) and (past_ids['key']==now_ids['key']):
+                movie_image_list.append([image_path_list[i],l])
+            else:
+                if int(past_ids['id']) in train_id_list:
+                    train_data.append(movie_image_list)
+                elif int(past_ids['id']) in validation_id_list:
+                    validation_data.append(movie_image_list)
+                elif int(past_ids['id']) in test_id_list:
+                    test_data.append(movie_image_list)
+                movie_image_list = []
+                movie_image_list.append([image_path_list[i],l])
+            past_path = image_path_list[i]
+        # 不均衡データ調整
+        class_file_num[c] = path_num
+        if l==0:
+            n = class_file_num[c]
+        class_weights[l] = 1 / (class_file_num[c]/n)
+
+    train_data = list(chain.from_iterable(train_data))
+    validation_data = list(chain.from_iterable(validation_data))
+    test_data = list(chain.from_iterable(test_data))
+    train_data_num = len(train_data)
+    validation_data_num = len(validation_data)
+    test_data_num = len(test_data)
+    print("\tALL IMAGE PATH NUM: " + str(data_num))
+    print("\tALL DATA NUM: " + str(train_data_num+validation_data_num+test_data_num))
+    print("\tTRAIN DATA NUM: " + str(train_data_num))
+    print("\tVALIDATION DATA NUM: " + str(validation_data_num))
+    print("\tTEST DATA NUM: " + str(test_data_num))
+    def makeGenerator(data,subset="training"):
+        return ImageIterator(
+            data,
+            batch_size=batch_size,
+            target_size=image_size[:2],
+            color_mode=color_mode,
+            seed=1,
+            rotation_range=rotation_range,
+            width_shift_range=width_shift_range,
+            height_shift_range=height_shift_range,
+            brightness_range=brightness_range,
+            shear_range=shear_range,
+            zoom_range=zoom_range,
+            channel_shift_range=channel_shift_range,
+            horizontal_flip=horizontal_flip,
+            vertical_flip=vertical_flip,
+            edge=edge,
+            rescale=1./255,
+            data_format='channels_last',
+            subset=subset)
+    train_generator = makeGenerator(train_data,"training")
+    validation_generator = makeGenerator(validation_data,"validation")
+    test_generator = makeGenerator(test_data,"test")
+    del train_data
+    del validation_data
+    del test_data
+    return (train_generator,validation_generator,test_generator,class_file_num,class_weights)
+
+
+### Celebのsequence_generator作成 ###
+def makeSequenceDataGenerator_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        validation_rate=0.1,
+        test_rate=0.1,
+        batch_size=32,
+        image_size=(256,256,3),
+        nt=50,
+        per_frame=50,
+        rotation_range=15.0,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        brightness_range=None,
+        shear_range=0.0,
+        zoom_range=0.1,
+        channel_shift_range=0.0,
+        horizontal_flip=True,
+        vertical_flip=False,
+        edge=None
+    ):
+    if image_size[2]==1:
+        color_mode = 'grayscale'
+    else:
+        color_mode = 'rgb'
+    class_file_num = {}
+    class_weights = {}
+    train_data = []
+    validation_data = []
+    test_data = []
+    train_rate = 1 - validation_rate - test_rate
+    s1 = (int)(59*train_rate)
+    s2 = (int)(59*(train_rate+validation_rate))
+    id_list = list(range(62))
+    id_list.remove(14)
+    id_list.remove(15)
+    id_list.remove(18)
+    # random.shuffle(id_list)
+    train_id_list = id_list[ : s1]
+    validation_id_list = id_list[s1 : s2]
+    test_id_list = id_list[s2 : ]
+    print("\tTRAIN IMAGE DATA ID: ",end="")
+    print(train_id_list)
+    print("\tVALIDATION IMAGE DATA ID: ",end="")
+    print(validation_id_list)
+    print("\tTEST IMAGE DATA ID: ",end="")
+    print(test_id_list)
+    del id_list
+    data_num = 0
+    for l,c in enumerate(classes):
+        image_path_list = sorted(glob.glob(data_dir+"/"+c+"/*"))
+        path_num = len(image_path_list)
+        regexp = r'^.+id(?P<id>(\d+))_(?P<id2>\d+)_?(?P<num>\d+).(?P<ext>.{2,4})$'
+        past_path = image_path_list[0]
+        i = 0
+        num = 0
+        while path_num > i+nt:
+            sequence_path_list = []
+            if (int(re.search(regexp,image_path_list[i]).groupdict()['num'])%per_frame)==0:
+                for j in range(nt):
+                    past_ids = re.search(regexp,past_path).groupdict()
+                    now_ids = re.search(regexp,image_path_list[i+j]).groupdict()
+                    if (past_ids['id']==now_ids['id']) and (past_ids['id2']==now_ids['id2']):
+                        sequence_path_list.append(image_path_list[i+j])
+                    else:
+                        i += j
+                        past_path = image_path_list[i]
+                        break
+                    past_path = image_path_list[i+j]
+                else:
+                    if int(past_ids['id']) in train_id_list:
+                        train_data.append([[sequence_path_list,l]])
+                    elif int(past_ids['id']) in validation_id_list:
+                        validation_data.append([[sequence_path_list,l]])
+                    elif int(past_ids['id']) in test_id_list:
+                        test_data.append([[sequence_path_list,l]])
+                    num += 1
+                    i += 1
+            else:
+                i += 1
+        data_num += num
+        # 不均衡データ調整
+        class_file_num[c] = num
+        if l==0:
+            n = class_file_num[c]
+        class_weights[l] = 1 / (class_file_num[c]/n)
+    train_data = list(chain.from_iterable(train_data))
+    validation_data = list(chain.from_iterable(validation_data))
+    test_data = list(chain.from_iterable(test_data))
+    train_data_num = len(train_data)
+    validation_data_num = len(validation_data)
+    test_data_num = len(test_data)
+    print("\tALL IMAGE PATH NUM: " + str(data_num))
+    print("\tALL DATA NUM: " + str(train_data_num+validation_data_num+test_data_num))
+    print("\tTRAIN DATA NUM: " + str(train_data_num))
+    print("\tVALIDATION DATA NUM: " + str(validation_data_num))
+    print("\tTEST DATA NUM: " + str(test_data_num))
+    def makeGenerator(data,subset="training"):
+        return ImageSequenceIterator(
+            data,
+            batch_size=batch_size,
+            target_size=image_size[:2],
+            nt=nt,
+            color_mode=color_mode,
+            seed=1,
+            rotation_range=rotation_range,
+            width_shift_range=width_shift_range,
+            height_shift_range=height_shift_range,
+            brightness_range=brightness_range,
+            shear_range=shear_range,
+            zoom_range=zoom_range,
+            channel_shift_range=channel_shift_range,
+            horizontal_flip=horizontal_flip,
+            vertical_flip=vertical_flip,
+            edge=edge,
+            rescale=1./255,
+            data_format='channels_last',
+            subset=subset)
+    train_generator = makeGenerator(train_data,"training")
+    validation_generator = makeGenerator(validation_data,"validation")
+    test_generator = makeGenerator(test_data,"test")
+    del train_data
+    del validation_data
+    del test_data
+    return (train_generator,validation_generator,test_generator,class_file_num,class_weights)
+
+
+### 任意のディレクトリのgenerator作成 ###
+def makeImageDataGenerator(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        batch_size=32,
+        image_size=(256,256,3),
+        rotation_range=15.0,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        brightness_range=None,
+        shear_range=0.0,
+        zoom_range=0.1,
+        channel_shift_range=0.0,
+        horizontal_flip=True,
+        vertical_flip=False,
+        edge=None
+    ):
+    if image_size[2]==1:
+        color_mode = 'grayscale'
+    else:
+        color_mode = 'rgb'
+    class_file_num = {}
+    class_weights = {}
+    data = []
+    data_num = 0
+    for l,c in enumerate(classes):
+        image_path_list = sorted(glob.glob(data_dir+"/"+c+"/*"))
+        path_num = len(image_path_list)
+        data_num += path_num
+        for i,image_path in enumerate(image_path_list):
+            data.append([[image_path,l]])
+        # 不均衡データ調整
+        class_file_num[c] = path_num
+        if l==0:
+            n = class_file_num[c]
+        class_weights[l] = 1 / (class_file_num[c]/n)
+
+    data = list(chain.from_iterable(data))
+    print("\tALL DATA NUM: " + str(data_num))
+    def makeGenerator(data,subset="test"):
+        return ImageIterator(
+            data,
+            batch_size=batch_size,
+            target_size=image_size[:2],
+            color_mode=color_mode,
+            seed=1,
+            rotation_range=rotation_range,
+            width_shift_range=width_shift_range,
+            height_shift_range=height_shift_range,
+            brightness_range=brightness_range,
+            shear_range=shear_range,
+            zoom_range=zoom_range,
+            channel_shift_range=channel_shift_range,
+            horizontal_flip=horizontal_flip,
+            vertical_flip=vertical_flip,
+            edge=edge,
+            rescale=1./255,
+            data_format='channels_last',
+            subset=subset)
+    generator = makeGenerator(data,"test")
+    del data
+    return (generator,class_file_num,class_weights)
+
+
+### Celebのパス取得(train,validation,test) ###
+def getPathList_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-real-image-face-90',
+        validation_rate=0.1,
+        test_rate=0.1,
+        data_type="test"
+    ):
+    train_data = []
+    validation_data = []
+    test_data = []
+    train_rate = 1 - validation_rate - test_rate
+    s1 = (int)(59*train_rate)
+    s2 = (int)(59*(train_rate+validation_rate))
+    id_list = list(range(62))
+    id_list.remove(14)#14
+    id_list.remove(15)#15
+    id_list.remove(18)
+    # random.shuffle(id_list)
+    train_id_list = id_list[ : s1]
+    validation_id_list = id_list[s1 : s2]
+    test_id_list = id_list[s2 : ]
+    del id_list
+    image_path_list = sorted(glob.glob(data_dir+"/*"))
+    regexp = r'^.+?id(?P<id>(\d+))(_id(?P<id2>\d+))?_(?P<key>\d+)_(?P<num>\d+).(?P<ext>.{2,4})$'
+    for i,image_path in enumerate(image_path_list):
+        ids = re.search(regexp,image_path).groupdict()
+        if int(ids['id']) in train_id_list:
+            train_data.append([str(image_path)])
+        elif int(ids['id']) in validation_id_list:
+            validation_data.append([str(image_path)])
+        elif int(ids['id']) in test_id_list:
+            test_data.append([str(image_path)])
+
+    train_data = list(chain.from_iterable(train_data))
+    validation_data = list(chain.from_iterable(validation_data))
+    test_data = list(chain.from_iterable(test_data))
+    if data_type=="train":
+        return train_data
+    elif data_type=="validation":
+        return validation_data
+    elif data_type=="test":
+        return test_data
+    else:
+        return (train_data,validation_data,test_data)

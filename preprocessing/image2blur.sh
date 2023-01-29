@@ -11,5 +11,7 @@
 # package install
 . ~/proxy.sh
 
+/usr/bin/python --version
+
 # execute python script
-/usr/bin/python image2face.py
+/usr/bin/python image2blur.py
