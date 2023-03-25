@@ -1632,6 +1632,8 @@ def makeSequencePathList_Celeb(
         classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         validation_rate=0.1,
         test_rate=0.1,
+        nt=10,
+        per_frame=2,
         data_type=None
     ):
     class_file_num = {}
