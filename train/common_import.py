@@ -87,6 +87,9 @@ except ImportError as e:
     print(e)
     from ImageSequenceIterator_nocv2 import *
 
+### 環境変数読み込み ###
+from dotenv import load_dotenv
+load_dotenv()
 
 ### GPU稼働確認 ###
 import tensorflow as tf
