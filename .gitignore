@@ -1,5 +1,6 @@
 __pycache__/
 .env
+.python-version
 /model/
 /data/
 /preprocessing/logs1
