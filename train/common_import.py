@@ -19,6 +19,13 @@ import os
 # from tensorflow.python.keras.utils.multi_gpu_utils import multi_gpu_model
 # import tensorflow.python.keras.backend as K
 
+import tensorflow as tf
+tf_version = tf.__version__
+print("tf version: "+tf_version)
+# 2.3.1
+# 2.7.0
+# 2.9.1
+
 import tensorflow.python.keras as keras
 from tensorflow.python.keras import layers
 from tensorflow.python.keras import models
@@ -28,9 +35,16 @@ from tensorflow.keras import optimizers
 # from keras import optimizers
 from tensorflow.python.keras import callbacks
 from tensorflow.python.keras import metrics
-from tensorflow.python.keras.datasets import cifar10
-from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
-import tensorflow as tf
+if tf_version=="2.3.1":
+    from tensorflow.python.keras.datasets import cifar10
+    from tensorflow.python.keras.datasets import mnist
+else:
+    from tensorflow.keras.datasets import cifar10
+    from tensorflow.keras.datasets import mnist
+if tf_version=="2.3.1":
+    from tensorflow.python.keras.preprocessing.image import ImageDataGenerator
+else:
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # from tensorflow.python.keras.utils.multi_gpu_utils import multi_gpu_model
 # import tensorflow.python.keras.backend as K
 
@@ -62,14 +76,21 @@ from tensorflow.python.util.nest import _yield_value
 
 from defined_models import efficientnetv2
 from originalnet import *
-from ImageIterator import *
-from ImageSequenceIterator import *
+try:
+    from ImageIterator import *
+except ImportError as e:
+    print(e)
+    from ImageIterator_nocv2 import *
+try:
+    from ImageSequenceIterator import *
+except ImportError as e:
+    print(e)
+    from ImageSequenceIterator_nocv2 import *
 
 
 ### GPU稼働確認 ###
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-print("tf version: "+tf.__version__)
 print(device_lib.list_local_devices())
 # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
@@ -173,6 +194,9 @@ def getMetrics(mode=None):
 
 
 
+####################################################################################################
+# CNNモデル構造
+####################################################################################################
 
 
 ### CNN 2値分類 ###
@@ -296,12 +320,40 @@ def loadXception(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="Xception")
         model.add(applications.xception.Xception(include_top=False, weights=None, input_shape=input_shape))
-        # print(len(applications.xception.Xception(include_top=False, weights=None, input_shape=input_shape).layers))
         model.add(layers.GlobalAveragePooling2D())
         model.add(layers.Dense(256, kernel_initializer='he_uniform'))
         model.add(layers.BatchNormalization())
         model.add(layers.Activation('relu'))
         # model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            # optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
+
+### CNN Xception Dropoutあり ###
+def loadXceptionDropout(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="XceptionDrop")
+        model.add(applications.xception.Xception(include_top=False, weights=None, input_shape=input_shape))
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(512, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(64, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
         model.add(layers.Dense(1, activation='sigmoid'))
         if weights_path != None:
             model.load_weights(weights_path)
@@ -408,7 +460,7 @@ def loadXceptionOriginal(input_shape=(480,640,3),weights_path=None):
         )
     return model
 
-### CNN EfficientNetV2 ###
+### CNN EfficientNetV2 (使用できない?) ###
 def loadEfficientNetV2(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
         model = models.Sequential(name="EfficientNetV2")
@@ -427,6 +479,20 @@ def loadEfficientNetV2(input_shape=(480,640,3),weights_path=None):
         )
     return model
 
+
+####################################################################################################
+
+
+
+
+
+
+
+
+
+####################################################################################################
+# LightInceptionNet
+####################################################################################################
 
 
 ### オリジナル構造 ###
@@ -490,6 +556,7 @@ def original_net(inputs,output_filter=128):
     # x = layers.Concatenate()([x,cp])
     # x = layers.BatchNormalization()(x)
     return x
+
 
 def original_net2(inputs,output_filter=128):
     cell_num = 8
@@ -972,11 +1039,19 @@ def loadOriginalNetNonDrop(input_shape=(480,640,3),weights_path=None):
     return model
 
 
+####################################################################################################
 
 
 
 
 
+
+
+
+
+####################################################################################################
+# AutoEncoder
+####################################################################################################
 
 
 ### CNN AutoEncoder ###
@@ -1036,8 +1111,21 @@ def loadAutoEncoder(input_shape=(480,640,3),weights_path=None):
     return model
 
 
+####################################################################################################
 
-### RNN ###
+
+
+
+
+
+
+
+####################################################################################################
+# RNNモデル構造
+####################################################################################################
+
+
+### SampleRNN ###
 def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
     with strategy.scope():
         inputs = layers.Input(shape=input_shape)
@@ -1065,6 +1153,51 @@ def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
     return model
 
 
+### ConvLSTM ###
+def loadConvLSTM(input_shape=(5,256,256,3),weights_path=None):
+    with strategy.scope():
+        # model = models.Sequential(name="ConvLSTM")
+        # model.add(layers.ConvLSTM2D(32, (3, 3), activation='relu', padding='same', return_sequences=True, input_shape=input_shape))
+        # model.add(layers.Dropout(0.5))
+        # model.add(layers.ConvLSTM2D(64, (3, 3), activation='relu', padding='same', return_sequences=True))
+        # # model.add(layers.Dropout(0.5))
+        # # model.add(layers.ConvLSTM2D(128, (3, 3), activation='relu', padding='same', return_sequences=True))
+        # # model.add(layers.Dropout(0.5))
+        # # model.add(layers.ConvLSTM2D(256, (3, 3), activation='relu', padding='same', return_sequences=False))
+        # model.add(layers.Flatten())
+        # model.add(layers.Dense(128, activation='relu'))
+        # model.add(layers.Dropout(0.5))
+        # model.add(layers.Dense(1, activation='sigmoid'))
+
+        inputs = layers.Input(shape=input_shape)
+        x = layers.ConvLSTM2D(32, (3, 3), activation='relu', padding='same', return_sequences=True, input_shape=input_shape)(inputs)
+        x = layers.BatchNormalization(momentum=0.6)(x)
+        x = layers.Dropout(0.5)(x)
+        x = layers.ConvLSTM2D(64, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
+        x = layers.BatchNormalization(momentum=0.7)(x)
+        x = layers.Dropout(0.5)(x)
+        x = layers.ConvLSTM2D(128, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
+        x = layers.BatchNormalization(momentum=0.8)(x)
+        x = layers.Dropout(0.5)(x)
+        x = layers.ConvLSTM2D(256, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
+        x = layers.Flatten()(x)
+        x = layers.Dense(128, activation='relu')(x)
+        x = layers.BatchNormalization(momentum=0.8)(x)
+        x = layers.Dropout(0.5)(x)
+        output = layers.Dense(1, activation='sigmoid')(x)
+        model = models.Model(inputs=inputs, outputs=output, name="ConvLSTM")
+
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            metrics=getMetrics("all")
+        )
+    return model
+
+
+####################################################################################################
 
 
 
@@ -1072,6 +1205,11 @@ def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
 
 
 
+
+
+####################################################################################################
+# 学習・テスト用
+####################################################################################################
 
 
 ### jsonパラメータ保存 ###
@@ -1103,9 +1241,29 @@ def testModel(model,test_generator):
     print("Test FP:",loss_and_metrics[7])
     print("Test FN:",loss_and_metrics[8])
     print(f"FINISH TEST: {datetime.datetime.now()}")
+    return loss_and_metrics
 
 
-### モデルテスト(動画単位) ###
+### AutoKerasのモデルテスト(画像単位) ###
+def testModelForAk(clf,test_dataset):
+    print(f"START TEST: {datetime.datetime.now()}")
+    loss_and_metrics = clf.evaluate(
+        test_dataset
+    )
+    print("Test loss:",loss_and_metrics[0])
+    print("Test accuracy:",loss_and_metrics[1])
+    print("Test AUC:",loss_and_metrics[2])
+    print("Test Precision:",loss_and_metrics[3])
+    print("Test Recall:",loss_and_metrics[4])
+    print("Test TP:",loss_and_metrics[5])
+    print("Test TN:",loss_and_metrics[6])
+    print("Test FP:",loss_and_metrics[7])
+    print("Test FN:",loss_and_metrics[8])
+    print(f"FINISH TEST: {datetime.datetime.now()}")
+    return loss_and_metrics
+
+
+### モデルテスト(動画単位) (未実装) ###
 def testModel_Movie(model,test_generator):
     print(f"START TEST (Movie): {datetime.datetime.now()}")
 
@@ -1133,6 +1291,18 @@ def testModel_Movie(model,test_generator):
 ### モデル保存 ###
 def saveModel(model,model_dir):
     print(f"START MODEL SAVE: {datetime.datetime.now()}")
+    try:
+        model.save(f'{model_dir}/model.h5')
+    except NotImplementedError:
+        print('Error')
+    model.save_weights(f'{model_dir}/weight.hdf5')
+    print(f"FINISH MODEL SAVE: {datetime.datetime.now()}")
+
+
+### AutoKerasのモデル保存 ###
+def saveModelForAk(clf,model_dir):
+    print(f"START MODEL SAVE: {datetime.datetime.now()}")
+    model = clf.export_model()
     try:
         model.save(f'{model_dir}/model.h5')
     except NotImplementedError:
@@ -1169,8 +1339,10 @@ def makeROC(history,model_dir):
 ### エポック毎にhistory保存 ###
 class saveHistory(callbacks.Callback):
     def __init__(self,filepath="history.json"):
+        self.epoch_start_time = None
         self.filepath = filepath
         self.history = {
+            "elapsed_time":[],
             "loss":[],
             "accuracy":[],
             "auc":[],
@@ -1199,7 +1371,13 @@ class saveHistory(callbacks.Callback):
         #     with open(self.filepath, 'w') as f:
         #         json.dump(self.history, f, indent=2, sort_keys=False, ensure_ascii=False)
 
+    def on_epoch_begin(self, epoch, logs=None):
+        self.epoch_start_time = time.time()
+
     def on_epoch_end(self, epoch, logs={}):
+        if "elapsed_time" not in self.history: # 追記したものなので、しばらくはこれで
+            self.history["elapsed_time"] = []
+        self.history["elapsed_time"].append(time.time()-self.epoch_start_time)
         self.history["loss"].append(logs.get('loss'))
         self.history["accuracy"].append(logs.get('accuracy'))
         self.history["auc"].append(logs.get('auc'))
@@ -1222,29 +1400,30 @@ class saveHistory(callbacks.Callback):
             json.dump(self.history, f, indent=2, sort_keys=False, ensure_ascii=False)
 
 
-### Celebのimage_generator作成 ###
-def makeImageDataGenerator_Celeb(
+####################################################################################################
+
+
+
+
+
+
+
+
+
+
+####################################################################################################
+# CNN用データ生成 (image)
+####################################################################################################
+
+
+### Celebのimagepathリスト取得 ###
+def makeImagePathList_Celeb(
         data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
         classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         validation_rate=0.1,
         test_rate=0.1,
-        batch_size=32,
-        image_size=(256,256,3),
-        rotation_range=15.0,
-        width_shift_range=0.15,
-        height_shift_range=0.15,
-        brightness_range=None,
-        shear_range=0.0,
-        zoom_range=0.1,
-        channel_shift_range=0.0,
-        horizontal_flip=True,
-        vertical_flip=False,
-        edge=None
+        data_type=None
     ):
-    if image_size[2]==1:
-        color_mode = 'grayscale'
-    else:
-        color_mode = 'rgb'
     class_file_num = {}
     class_weights = {}
     train_data = []
@@ -1300,6 +1479,47 @@ def makeImageDataGenerator_Celeb(
     train_data = list(chain.from_iterable(train_data))
     validation_data = list(chain.from_iterable(validation_data))
     test_data = list(chain.from_iterable(test_data))
+    if data_type=="train":
+        return train_data
+    elif data_type=="validation":
+        return validation_data
+    elif data_type=="test":
+        return test_data
+    else:
+        return (train_data, validation_data, test_data, data_num, class_file_num, class_weights)
+
+
+### Celebのimage_generator作成 ###
+def makeImageDataGenerator_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        validation_rate=0.1,
+        test_rate=0.1,
+        batch_size=32,
+        image_size=(256,256,3),
+        rotation_range=15.0,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        brightness_range=None,
+        shear_range=0.0,
+        zoom_range=0.1,
+        channel_shift_range=0.0,
+        horizontal_flip=True,
+        vertical_flip=False,
+        edge=None
+    ):
+    if image_size[2]==1:
+        color_mode = 'grayscale'
+    else:
+        color_mode = 'rgb'
+
+    train_data, validation_data, test_data, data_num, class_file_num, class_weights = makeImagePathList_Celeb(
+        data_dir=data_dir,
+        classes=classes,
+        validation_rate=validation_rate,
+        test_rate=test_rate,
+    )
+
     train_data_num = len(train_data)
     validation_data_num = len(validation_data)
     test_data_num = len(test_data)
@@ -1337,16 +1557,14 @@ def makeImageDataGenerator_Celeb(
     return (train_generator,validation_generator,test_generator,class_file_num,class_weights)
 
 
-### Celebのsequence_generator作成 ###
-def makeSequenceDataGenerator_Celeb(
+### CelebのImageGenerator作成(AutoKeras用) ###
+def makeImageDataGenerator_Celeb_ForAk(
         data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
         classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         validation_rate=0.1,
         test_rate=0.1,
         batch_size=32,
         image_size=(256,256,3),
-        nt=50,
-        per_frame=50,
         rotation_range=15.0,
         width_shift_range=0.15,
         height_shift_range=0.15,
@@ -1358,10 +1576,64 @@ def makeSequenceDataGenerator_Celeb(
         vertical_flip=False,
         edge=None
     ):
+
     if image_size[2]==1:
         color_mode = 'grayscale'
     else:
         color_mode = 'rgb'
+
+    train_data, validation_data, test_data, data_num, class_file_num, class_weights = makeImagePathList_Celeb(
+        data_dir=data_dir,
+        classes=classes,
+        validation_rate=validation_rate,
+        test_rate=test_rate,
+    )
+
+    train_images = tf.data.Dataset.from_tensor_slices(np.array(train_data)[:,0])
+    validation_images = tf.data.Dataset.from_tensor_slices(np.array(validation_data)[:,0])
+    test_images = tf.data.Dataset.from_tensor_slices(np.array(test_data)[:,0])
+    train_labels = tf.data.Dataset.from_tensor_slices(np.array(train_data)[:,1])
+    validation_labels = tf.data.Dataset.from_tensor_slices(np.array(validation_data)[:,1])
+    test_labels = tf.data.Dataset.from_tensor_slices(np.array(test_data)[:,1])
+    
+    train_images = train_images.map(
+        lambda img_path: preprocess(img_path, image_size)
+    )
+    validation_images = validation_images.map(
+        lambda img_path: preprocess(img_path, image_size)
+    )
+    test_images = test_images.map(
+        lambda img_path: preprocess(img_path, image_size)
+    )
+    train_dataset = tf.data.Dataset.zip((train_images, train_labels))
+    validation_dataset = tf.data.Dataset.zip((validation_images, validation_labels))
+    test_dataset = tf.data.Dataset.zip((test_images, test_labels))
+    train_dataset = train_dataset.batch(batch_size)
+    validation_dataset = validation_dataset.batch(batch_size)
+    test_dataset = test_dataset.batch(batch_size)
+
+    return (train_dataset,validation_dataset,test_dataset,class_file_num,class_weights)
+
+
+####################################################################################################
+
+
+
+
+
+####################################################################################################
+# RNN用データ生成 (sequence)
+####################################################################################################
+
+
+### Celebのsequencepathリスト取得 ###
+def makeSequencePathList_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        validation_rate=0.1,
+        test_rate=0.1,
+        data_type=None
+    ):
     class_file_num = {}
     class_weights = {}
     train_data = []
@@ -1426,6 +1698,49 @@ def makeSequenceDataGenerator_Celeb(
     train_data = list(chain.from_iterable(train_data))
     validation_data = list(chain.from_iterable(validation_data))
     test_data = list(chain.from_iterable(test_data))
+    if data_type=="train":
+        return train_data
+    elif data_type=="validation":
+        return validation_data
+    elif data_type=="test":
+        return test_data
+    else:
+        return (train_data, validation_data, test_data, data_num, class_file_num, class_weights)
+
+
+### Celebのsequence_generator作成 ###
+def makeSequenceDataGenerator_Celeb(
+        data_dir='/hss/gaisp/morilab/toshi/fake_detection/data',
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        validation_rate=0.1,
+        test_rate=0.1,
+        batch_size=32,
+        image_size=(256,256,3),
+        nt=50,
+        per_frame=50,
+        rotation_range=15.0,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
+        brightness_range=None,
+        shear_range=0.0,
+        zoom_range=0.1,
+        channel_shift_range=0.0,
+        horizontal_flip=True,
+        vertical_flip=False,
+        edge=None
+    ):
+    if image_size[2]==1:
+        color_mode = 'grayscale'
+    else:
+        color_mode = 'rgb'
+
+    train_data, validation_data, test_data, data_num, class_file_num, class_weights = makeSequencePathList_Celeb(
+        data_dir=data_dir,
+        classes=classes,
+        validation_rate=validation_rate,
+        test_rate=test_rate,
+    )
+
     train_data_num = len(train_data)
     validation_data_num = len(validation_data)
     test_data_num = len(test_data)
@@ -1462,6 +1777,21 @@ def makeSequenceDataGenerator_Celeb(
     del validation_data
     del test_data
     return (train_generator,validation_generator,test_generator,class_file_num,class_weights)
+
+
+####################################################################################################
+
+
+
+
+
+
+
+
+
+####################################################################################################
+# データ生成 (汎用)
+####################################################################################################
 
 
 ### 任意のディレクトリのgenerator作成 ###
@@ -1572,3 +1902,32 @@ def getPathList_Celeb(
         return test_data
     else:
         return (train_data,validation_data,test_data)
+    
+    
+####################################################################################################
+    
+
+
+
+
+
+
+
+
+
+
+
+####################################################################################################
+# 画像前処理
+####################################################################################################
+
+
+def preprocess(file_path,image_size=(256,256,3)):
+    raw = tf.io.read_file(file_path)
+    image = tf.io.decode_image(
+        raw, channels=image_size[2], expand_animations=False
+    )
+    image = tf.image.resize(image, image_size[:2], method='nearest')
+    image.set_shape((image_size[0], image_size[1], image_size[2]))
+    ###今後前処理を実装###
+    return image

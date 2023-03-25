@@ -5,18 +5,19 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 ###パラメータ###
 # retrain_dir = "OriginalNet_20220731-130612_epoch50"
 # retrain_dir = "OriginalNetNonDrop_20220731-131333_epoch50"
-retrain_dir = "OriginalNet_20221121-174136_epoch50"
+# retrain_dir = "OriginalNet_20221121-174136_epoch50"
 # retrain_dir = "Xception_20220812-065159_epoch15"
+retrain_dir = "Xception_20230112-045215_epoch100"
 retrain_epochs = 0
-gpu_count = 32
+gpu_count = 2
 # data_dir = "/hss/gaisp/morilab/toshi/fake_detection/data"
 data_dir = "/home/toshi/fake_detection/data/datas"
-# classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
-# classes = ['Celeb-real-image-face-90-blur', 'Celeb-synthesis-image-face-90-blur']
-# classes = ['Celeb-real-image-face-90']
-# classes = ['Celeb-synthesis-image-face-90']
-# classes = ['Celeb-real-image-face-90-blur']
-classes = ['Celeb-synthesis-image-face-90-blur']
+classes = ['3_Celeb-real-image-face-90', '3_Celeb-synthesis-image-face-90']
+# classes = ['3_Celeb-real-image-face-90-blur', '3_Celeb-synthesis-image-face-90-blur']
+# classes = ['3_Celeb-real-image-face-90']
+# classes = ['3_Celeb-synthesis-image-face-90']
+# classes = ['3_Celeb-real-image-face-90-blur']
+# classes = ['3_Celeb-synthesis-image-face-90-blur']
 image_size = (256, 256, 3)
 
 

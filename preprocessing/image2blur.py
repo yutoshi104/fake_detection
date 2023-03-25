@@ -139,7 +139,7 @@ def main(data_dir,save_dir,makenum=50):
 
 
 if __name__=='__main__':
-    random.seed(1)
+    random.seed(10)
     real_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-real-image-face-90"
     real_save_directory = "/home/toshi/fake_detection/data/datas/Celeb-real-image-face-90-blur"
     fake_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-synthesis-image-face-90"

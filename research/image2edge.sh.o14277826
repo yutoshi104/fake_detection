@@ -1,0 +1,1173 @@
+
+data: real,	edge: none,	num: 10,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+
+data: real,	edge: none,	num: 50,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+Pass: ./concat/concat_real_none_50.jpg
+
+data: real,	edge: sobel,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: sobel,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: laplacian,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: laplacian,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: scharr,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: scharr,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: canny,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: real,	edge: canny,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: none,	num: 10,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+
+data: fake,	edge: none,	num: 50,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+Pass: ./concat/concat_fake_none_50.jpg
+
+data: fake,	edge: sobel,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: sobel,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: laplacian,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: laplacian,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: scharr,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: scharr,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: canny,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: fake,	edge: canny,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: none,	num: 10,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+
+data: with,	edge: none,	num: 50,	save dir: concat
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+uint8
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+(256, 256, 3)
+Pass: ./concat/concat_with_none_50.jpg
+
+data: with,	edge: sobel,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: sobel,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: laplacian,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: laplacian,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: scharr,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: scharr,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: canny,	num: 10,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+
+data: with,	edge: canny,	num: 50,	save dir: concat
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+float32
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)
+(256, 256)

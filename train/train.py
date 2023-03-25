@@ -16,14 +16,15 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
 # model_structure = "SampleCnn"
-# model_structure = "Vgg16"
+model_structure = "Vgg16"
 # model_structure = "InceptionV3"
-model_structure = "Xception"
+# model_structure = "Xception"
+# model_structure = "XceptionDropout"
 # model_structure = "EfficientNetV2"
 # model_structure = "OriginalNet"
 # model_structure = "OriginalNetNonDrop"
-epochs = 50
-gpu_count = 16
+epochs = 300
+gpu_count = 8
 batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
@@ -51,25 +52,25 @@ edge=None
 
 
 ###data augmentation###
-# rotation_range=15.0
-# width_shift_range=0.15
-# height_shift_range=0.15
-# brightness_range = None
-# shear_range=0.0
-# zoom_range=0.1
-# channel_shift_range = 0.0
-# horizontal_flip=True
-# vertical_flip=False
-###data augmentation (初期値)###
-rotation_range=0.0
-width_shift_range=0.0
-height_shift_range=0.0
+rotation_range=15.0
+width_shift_range=0.15
+height_shift_range=0.15
 brightness_range = None
 shear_range=0.0
-zoom_range=0.0
+zoom_range=0.1
 channel_shift_range = 0.0
-horizontal_flip=False
+horizontal_flip=True
 vertical_flip=False
+###data augmentation (初期値)###
+# rotation_range=0.0
+# width_shift_range=0.0
+# height_shift_range=0.0
+# brightness_range = None
+# shear_range=0.0
+# zoom_range=0.0
+# channel_shift_range = 0.0
+# horizontal_flip=False
+# vertical_flip=False
 
 
 ###モデルの生成###
@@ -251,7 +252,7 @@ if es_flg:
     )
     cb_list.append(es_callback)
 cp_callback = callbacks.ModelCheckpoint(
-    filepath=cp_dir+"/cp_model_{epoch:03d}+000-{accuracy:.2f}.h5",
+    filepath=cp_dir+"/cp_model_000+{epoch:03d}-{accuracy:.2f}.h5",
     monitor='val_loss',
     mode='auto',
     save_best_only=False,
@@ -280,6 +281,7 @@ print("\tCHECKPOINT PERIOD: " + str(cp_period))
 print("\tDATA DIRECTORY: " + str(data_dir))
 print("\tCLASSES: " + str(classes))
 print("\tCLASSES NUM: " + str(class_file_num))
+print("\tCLASSES WEIGHTS: " + str(class_weights))
 print("\tIMAGE SIZE: " + str(image_size))
 print("\tEARLY STOPPING: " + str(es_flg))
 print("\tROTATION RANGE: " + str(rotation_range))

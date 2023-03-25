@@ -15,9 +15,10 @@ from common_import import *
 print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
-model_structure = "SampleRnn"
-epochs = 50
-gpu_count = 8
+# model_structure = "SampleRnn"
+model_structure = "ConvLSTM"
+epochs = 500
+gpu_count = 2
 batch_size_per_gpu = 2
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
@@ -34,7 +35,7 @@ classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
 image_size = (256, 256, 3)
 # image_size = (128, 128, 3)
 nt = 30
-per_frame = 15
+per_frame = 30
 es_flg = False
 
 ###edge###
@@ -243,7 +244,7 @@ if es_flg:
     )
     cb_list.append(es_callback)
 cp_callback = callbacks.ModelCheckpoint(
-    filepath=cp_dir+"/cp_model_{epoch:03d}+000-{accuracy:.2f}.h5",
+    filepath=cp_dir+"/cp_model_000+{epoch:03d}-{accuracy:.2f}.h5",
     monitor='val_loss',
     mode='auto',
     save_best_only=False,
@@ -272,6 +273,7 @@ print("\tCHECKPOINT PERIOD: " + str(cp_period))
 print("\tDATA DIRECTORY: " + str(data_dir))
 print("\tCLASSES: " + str(classes))
 print("\tCLASSES NUM: " + str(class_file_num))
+print("\tCLASSES WEIGHTS: " + str(class_weights))
 print("\tIMAGE SIZE: " + str(image_size))
 print("\tSEQUENCE SIZE: " + str(nt))
 print("\tPER FRAME: " + str(per_frame))

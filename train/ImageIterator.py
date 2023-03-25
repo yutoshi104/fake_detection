@@ -1,10 +1,17 @@
 import numpy as np
 import os
 import cv2
+import tensorflow as tf
+tf_version = tf.__version__
+if tf_version=="2.3.1":
+    from tensorflow.python.keras.preprocessing.image import Iterator
+    from tensorflow.python.keras.preprocessing.image import load_img,img_to_array
+    from tensorflow.python.keras.preprocessing.image import random_rotation,random_shift,random_shear,random_zoom,apply_channel_shift,random_channel_shift,apply_brightness_shift,random_brightness,apply_affine_transform
+else:
+    from tensorflow.keras.preprocessing.image import Iterator
+    from tensorflow.keras.preprocessing.image import load_img,img_to_array
+    from tensorflow.keras.preprocessing.image import random_rotation,random_shift,random_shear,random_zoom,apply_channel_shift,random_channel_shift,apply_brightness_shift,random_brightness,apply_affine_transform
 from tensorflow.python.keras.backend import dtype
-from tensorflow.python.keras.preprocessing.image import Iterator
-from tensorflow.python.keras.preprocessing.image import load_img,img_to_array
-from tensorflow.python.keras.preprocessing.image import random_rotation,random_shift,random_shear,random_zoom,apply_channel_shift,random_channel_shift,apply_brightness_shift,random_brightness,apply_affine_transform
 
 
 """

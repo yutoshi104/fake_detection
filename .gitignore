@@ -14,6 +14,10 @@ __pycache__/
 /train/retrain_rnn.sh.o*
 /train/test.sh.e*
 /train/test.sh.o*
+/train/test_result/*test.sh.e*
+/train/test_result/*test.sh.o*
+/train/train_rl.sh.e*
+/train/train_rl.sh.o*
 /train/myresult.txt
 !/model/**/history.json
 !/model/**/params.json

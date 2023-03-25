@@ -26,14 +26,20 @@ def convertGray(img_data):
     return cv2.cvtColor(img_data, cv2.COLOR_BGR2GRAY)
 
 # エッジ抽出
-def image2edgeimage(img_gray,edge_type='sobel'):
-    if edge_type=='sobel':
+def image2edgeimage(img,edge_type='sobel'):
+    if edge_type=='none':
+        img_edge = img
+    elif edge_type=='sobel':
+        img_gray = convertGray(img)
         img_edge = cv2.Sobel(img_gray, cv2.CV_32F, 1, 0, ksize=3)
     elif edge_type=='laplacian':
+        img_gray = convertGray(img)
         img_edge = cv2.Laplacian(img_gray, cv2.CV_32F)
     elif edge_type=='scharr':
+        img_gray = convertGray(img)
         img_edge = cv2.Sobel(img_gray, cv2.CV_32F, 1, 0, ksize=-1)
     elif edge_type=='canny':
+        img_gray = convertGray(img)
         img_edge = cv2.Canny(img_gray, 100, 200).astype(np.float32)
     return img_edge
 
@@ -70,12 +76,15 @@ def saveImageList(data_list,save_path="./concat_image.jpg"):
     for j in range(h):
         data_list.append(img_black)
     # 結合
-    vert_list = []
-    for i in range(0,l,h):
-        vert_list.append(cv2.vconcat(data_list[i:i+h]))
-    concat_image = cv2.hconcat(vert_list)
-    cv2.imwrite(save_path, concat_image)
-
+    try:
+        vert_list = []
+        for i in range(0,l,h):
+            print(data_list[0].shape)
+            vert_list.append(cv2.vconcat(data_list[i:i+h]))
+        concat_image = cv2.hconcat(vert_list)
+        cv2.imwrite(save_path, concat_image)
+    except Exception:
+        print(f"Pass: {save_path}")
 
 
 real_directory = "/hss/gaisp/morilab/toshi/fake_detection/data/Celeb-real-image-face-90"
@@ -90,6 +99,7 @@ def main(real_fake_with,edge_type,img_num,save_dir='concat'):
     print("edge: "+edge_type, end=",\t")
     print("num: "+str(img_num), end=",\t")
     print("save dir: "+save_dir)
+    random.seed(10)
     
     if real_fake_with=='real':
         path_list = random.sample(real_path_list, img_num)
@@ -103,7 +113,6 @@ def main(real_fake_with,edge_type,img_num,save_dir='concat'):
     img_list = []
     for path in path_list:
         img = getImageFromPath(path)
-        img = convertGray(img)
         img = image2edgeimage(img,edge_type)
         print(img.dtype)
         img_list.append(img)
@@ -131,7 +140,7 @@ if __name__=='__main__':
 
     ###一括###
     real_fake_with_list = ["real","fake","with"]
-    edge_type_list = ["sobel","laplacian","scharr","canny"]
+    edge_type_list = ["none","sobel","laplacian","scharr","canny"]
     img_num_list = [10,50]
     for rfw in real_fake_with_list:
         for e in edge_type_list:
