@@ -14,9 +14,10 @@
 # /usr/bin/python -m pip install matplotlib
 # /usr/bin/python -m pip install autokeras
 
-pip list
 pip install matplotlib
 pip install autokeras
+
+pip install python-dotenv
 
 # execute python script
 /usr/bin/python train_rl.py

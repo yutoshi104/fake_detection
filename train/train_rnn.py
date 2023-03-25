@@ -26,7 +26,7 @@ test_rate = 0.1
 # ↑動画ごとに分けているので最終的な画像でのデータ数はだいたい...
 cp_period = 3
 # data_dir = '../data/datas'
-data_dir = '/hss/gaisp/morilab/toshi/fake_detection/data'
+data_dir = os.getenv('FAKE_DATA_PATH')
 # classes = ['yuto', 'b']
 # classes = ['Celeb-real-image', 'Celeb-synthesis-image']
 classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']

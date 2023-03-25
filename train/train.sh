@@ -25,5 +25,7 @@
 # cat /etc/redhat-release
 # cat /proc/version
 
+pip install python-dotenv
+
 # execute python script
 /usr/bin/python train.py

@@ -13,5 +13,7 @@
 /usr/bin/python -m pip install --upgrade pip
 # pip install pyexiv2
 
+pip install python-dotenv
+
 # execute python script
 /usr/bin/python breakImage.py

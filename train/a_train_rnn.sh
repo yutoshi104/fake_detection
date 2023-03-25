@@ -15,4 +15,6 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 /usr/bin/python -m pip install --upgrade pip
 /usr/bin/python -m pip install matplotlib
 
+/usr/bin/python -m pip install python-dotenv
+
 /usr/bin/python retrain_rnn.py SampleRnn_20230204-051623_epoch50 16

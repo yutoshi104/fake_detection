@@ -20,5 +20,7 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 /usr/bin/python -m pip install matplotlib
 # /usr/bin/python -m pip install 
 
+pip install python-dotenv
+
 # execute python script
 /usr/bin/python retrain.py
