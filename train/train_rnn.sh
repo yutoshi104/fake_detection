@@ -18,13 +18,17 @@
 # /usr/bin/python -m pip uninstall --yes opencv-python
 /usr/bin/python -m pip install matplotlib
 # /usr/bin/python -m pip install 
-uname –a
-cat /etc/os-release
-cat /etc/centos-release
-cat /etc/redhat-release
-cat /proc/version
+# uname –a
+# cat /etc/os-release
+# cat /etc/centos-release
+# cat /etc/redhat-release
+# cat /proc/version
 
-pip install python-dotenv
+/usr/bin/python -m pip install python-dotenv
+
+# なんかdockerコンテナを他で変更すると一緒に書き換えられるので、これが必要
+# echo y | /usr/bin/python -m pip uninstall tensorflow
+# /usr/bin/python -m pip install tensorflow==2.3.1
 
 # execute python script
 /usr/bin/python train_rnn.py

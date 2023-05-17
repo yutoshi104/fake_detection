@@ -16,14 +16,22 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
 # model_structure = "SampleCnn"
-model_structure = "Vgg16"
+# model_structure = "Vgg16"
 # model_structure = "InceptionV3"
 # model_structure = "Xception"
 # model_structure = "XceptionDropout"
 # model_structure = "EfficientNetV2"
+# model_structure = "EfficientNetV2B0"
+# model_structure = "EfficientNetV2B3"
+model_structure = "EfficientNetV2S"
+# model_structure = "EfficientNetV2L"
 # model_structure = "OriginalNet"
 # model_structure = "OriginalNetNonDrop"
-epochs = 300
+# model_structure = "OriginalUpdate1"
+# model_structure = "OriginalGptUpdate1"
+# model_structure = "NasNetLarge"
+# model_structure = "NasNetMobile"
+epochs = 100
 gpu_count = 8
 batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count

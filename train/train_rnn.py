@@ -16,15 +16,16 @@ print(f"START PROGRAM: {datetime.datetime.now()}")
 
 ###パラメータ###
 # model_structure = "SampleRnn"
-model_structure = "ConvLSTM"
-epochs = 500
-gpu_count = 2
-batch_size_per_gpu = 2
+# model_structure = "ConvLSTM"
+model_structure = "SampleViT"
+epochs = 100
+gpu_count = 1
+batch_size_per_gpu = 8
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
 test_rate = 0.1
 # ↑動画ごとに分けているので最終的な画像でのデータ数はだいたい...
-cp_period = 3
+cp_period = 1
 # data_dir = '../data/datas'
 data_dir = os.getenv('FAKE_DATA_PATH')
 # classes = ['yuto', 'b']
@@ -34,8 +35,8 @@ classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
 # image_size = (240, 320, 3)
 image_size = (256, 256, 3)
 # image_size = (128, 128, 3)
-nt = 30
-per_frame = 30
+nt = 5
+per_frame = 50
 es_flg = False
 
 ###edge###
@@ -71,6 +72,7 @@ vertical_flip=False
 ###モデルの生成###
 model = globals()['load'+model_structure](input_shape=(nt,)+image_size)
 model.summary()
+exit()
 
 
 ###Generator作成###

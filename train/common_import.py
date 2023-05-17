@@ -97,7 +97,7 @@ from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
 # print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
-strategy = tf.distribute.MirroredStrategy()
+strategy = tf.distribute.MirroredStrategy(tf.config.list_logical_devices('GPU'))
     
 
 ### ROC AUC ###
@@ -463,25 +463,136 @@ def loadXceptionOriginal(input_shape=(480,640,3),weights_path=None):
         )
     return model
 
-### CNN EfficientNetV2 (使用できない?) ###
-def loadEfficientNetV2(input_shape=(480,640,3),weights_path=None):
+
+### CNN EfficientNetV2B0 Dropoutあり ###
+def loadEfficientNetV2B0(input_shape=(480,640,3),weights_path=None):
     with strategy.scope():
-        model = models.Sequential(name="EfficientNetV2")
+        model = models.Sequential(name="EfficientNetV2B0")
         model.add(layers.InputLayer(input_shape=input_shape))
-        # model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-b0', include_top=False))
-        model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-b3', include_top=False))
-        model.add(layers.Dropout(rate=0.2))
+        model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-b0', weights=None, include_top=False))
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
         model.add(layers.Dense(1, activation='sigmoid'))
 
         if weights_path != None:
             model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
-            optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer="sgd",
             metrics=getMetrics("all")
         )
     return model
 
+### CNN EfficientNetV2B3 Dropoutあり ###
+def loadEfficientNetV2B3(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="EfficientNetV2B3")
+        model.add(layers.InputLayer(input_shape=input_shape))
+        model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-b3', weights=None, include_top=False))
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
+
+### CNN EfficientNetV2S Dropoutあり ###
+def loadEfficientNetV2S(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="EfficientNetV2S")
+        model.add(layers.InputLayer(input_shape=input_shape))
+        model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-s', weights=None, include_top=False))
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
+
+### CNN EfficientNetV2L Dropoutあり ###
+def loadEfficientNetV2L(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="EfficientNetV2L")
+        model.add(layers.InputLayer(input_shape=input_shape))
+        model.add(efficientnetv2.effnetv2_model.get_model('efficientnetv2-l', weights=None, include_top=False))
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
+
+
+
+
+
+### CNN NASNet(large) ###
+def loadNasNetLarge(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="NASNetLarge")
+        model.add(applications.nasnet.NASNetLarge(include_top=False, weights=None, input_shape=input_shape))
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        # model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            # optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
+
+### CNN NASNet(mobile) ###
+def loadNasNetMobile(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        model = models.Sequential(name="NASNetMobile")
+        model.add(applications.nasnet.NASNetMobile(include_top=False, weights=None, input_shape=input_shape))
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(256, kernel_initializer='he_uniform'))
+        model.add(layers.BatchNormalization())
+        model.add(layers.Activation('relu'))
+        # model.add(layers.Dropout(0.5))
+        model.add(layers.Dense(1, activation='sigmoid'))
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            # optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer="sgd",
+            metrics=getMetrics("all")
+        )
+    return model
 
 ####################################################################################################
 
@@ -1049,6 +1160,255 @@ def loadOriginalNetNonDrop(input_shape=(480,640,3),weights_path=None):
 
 
 
+####################################################################################################
+# LightInceptionNetの改良（By MySelf）
+####################################################################################################
+
+
+### pattern 1 ###
+# def loadOriginalUpdate1(input_shape=(480,640,3),weights_path=None):
+#     with strategy.scope():
+#         def original_net(inputs,output_filter=128):
+#             cell_num = 8
+#             x = inputs
+
+#             red = layers.SeparableConv2D(output_filter//cell_num,(1,1),padding="same", kernel_initializer='he_uniform')(x)
+#             cell1 = red
+#             cell2 = layers.AveragePooling2D(pool_size=(2,2),strides=1,padding="same")(x)
+#             cell2 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell2)
+#             cell3 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell4 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell5 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell5 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell5)
+#             cell6 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell6 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell6)
+#             cell7 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell7 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell7)
+#             cell7 = layers.SeparableConv2D(output_filter//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell7)
+#             cell8_residual = layers.SeparableConv2D(output_filter//2//cell_num,(1,1),padding="same", kernel_initializer='he_uniform')(red)
+#             cell8 = layers.SeparableConv2D(output_filter//2//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(red)
+#             cell8 = layers.Concatenate()([cell8_residual,cell8])
+#             cell8_residual = layers.SeparableConv2D(output_filter//2//cell_num,(1,1),padding="same", kernel_initializer='he_uniform')(cell8)
+#             cell8 = layers.SeparableConv2D(output_filter//2//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell8)
+#             cell8 = layers.Concatenate()([cell8_residual,cell8])
+#             cell8_residual = layers.SeparableConv2D(output_filter//2//cell_num,(1,1),padding="same", kernel_initializer='he_uniform')(cell8)
+#             cell8 = layers.SeparableConv2D(output_filter//2//cell_num,(3,3),padding="same", kernel_initializer='he_uniform')(cell8)
+#             cell8 = layers.Concatenate()([cell8_residual,cell8])
+#             x = layers.Concatenate()([cell1,cell2,cell3,cell4,cell5,cell6,cell7,cell8])
+#             return x
+
+#         inputs = keras.Input(shape=input_shape)
+#         x = inputs
+
+#         ###1つ目###
+#         x = layers.Conv2D(32, (3,3), strides=2, padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.Conv2D(64, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         # (128,128,64)
+
+#         residual = x
+#         residual = layers.Conv2D(128, (1,1), strides=2, padding="same", kernel_initializer='he_uniform')(residual)
+#         residual = layers.BatchNormalization()(residual)
+#         x = layers.SeparableConv2D(128, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(128, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+#         x = layers.add([x, residual])
+#         x = layers.Activation('relu')(x)
+#         residual = layers.Conv2D(256, (1,1), strides=2, padding="same", kernel_initializer='he_uniform')(residual)
+#         residual = layers.BatchNormalization()(residual)
+#         x = layers.SeparableConv2D(256, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(256, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+#         x = layers.add([x, residual])
+#         x = layers.Activation('relu')(x)
+#         residual = layers.Conv2D(512, (1,1), strides=2, padding="same", kernel_initializer='he_uniform')(residual)
+#         residual = layers.BatchNormalization()(residual)
+#         x = layers.SeparableConv2D(512, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(512, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+#         x = layers.add([x, residual])
+#         x = layers.Activation('relu')(x)
+#         # (16,16,512)
+
+#         x = layers.SeparableConv2D(512, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         for i in range(5):
+#             residual = x
+#             x = layers.BatchNormalization()(x)
+#             x = layers.Activation('relu')(x)
+#             x = original_net(x,512)
+#             x = layers.BatchNormalization()(x)
+#             x = layers.Activation('relu')(x)
+#             x = original_net(x,512)
+#             x = layers.BatchNormalization()(x)
+#             x = layers.Activation('relu')(x)
+#             x = layers.Dropout(rate=0.3)(x)
+#             x = original_net(x,512)
+#             x = layers.add([x, residual])
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         # (16,16,512)
+
+
+#         residual = x
+#         residual = layers.Conv2D(768, (1,1), strides=2, padding="same", kernel_initializer='he_uniform')(residual)
+#         residual = layers.BatchNormalization()(residual)
+#         x = layers.SeparableConv2D(768, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(768, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+#         x = layers.add([x, residual])
+#         x = layers.Activation('relu')(x)
+#         residual = x
+#         x = original_net(x,768)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = original_net(x,768)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.add([x, residual])
+#         x = layers.Activation('relu')(x)
+#         # (8,8,768)
+
+#         residual = x
+#         residual = layers.Conv2D(1024, (1,1), strides=2, padding="same", kernel_initializer='he_uniform')(residual)
+#         residual = layers.BatchNormalization()(residual)
+#         x = layers.SeparableConv2D(1024, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(1024, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.MaxPooling2D((3, 3), strides=2, padding='same')(x)
+#         x = layers.add([x, residual])
+#         # (4,4,1024)
+
+#         x = layers.SeparableConv2D(1536, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.SeparableConv2D(2048, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.Dropout(rate=0.5)(x)
+#         # (4,4,2048)
+
+
+#         x = layers.GlobalAveragePooling2D()(x)
+#         # x = layers.Flatten()(x)
+#         x = layers.Dense(256, kernel_initializer='he_uniform')(x)
+#         x = layers.BatchNormalization()(x)
+#         x = layers.Activation('relu')(x)
+#         x = layers.Dropout(0.5)(x)
+#         x = layers.Dense(1, activation='sigmoid')(x)
+
+#         model = models.Model(inputs=inputs, outputs=x, name="OriginalNet")
+
+#         if weights_path != None:
+#             model.load_weights(weights_path)
+#         model.compile(
+#             loss='binary_crossentropy',
+#             optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+#             metrics=getMetrics("all")
+#         )
+#     return model
+
+
+####################################################################################################
+
+
+
+
+
+
+
+
+####################################################################################################
+# LightInceptionNetの改良（By ChatGPT）
+####################################################################################################
+
+### pattern 1 ###
+def loadOriginalGptUpdate1(input_shape=(480,640,3),weights_path=None):
+    with strategy.scope():
+        def modified_net(inputs,output_filter=64):
+            cell_num = 4
+            x = inputs
+
+            cell1 = layers.SeparableConv2D(output_filter//cell_num, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+            cell1 = layers.BatchNormalization()(cell1)
+            cell1 = layers.Activation('relu')(cell1)
+            cell2 = layers.AveragePooling2D(pool_size=(2,2),strides=1,padding="same")(x)
+            cell2 = layers.SeparableConv2D(output_filter//cell_num, (3,3), padding="same", kernel_initializer='he_uniform')(cell2)
+            cell2 = layers.BatchNormalization()(cell2)
+            cell2 = layers.Activation('relu')(cell2)
+            cell3 = layers.SeparableConv2D(output_filter//cell_num, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+            cell3 = layers.BatchNormalization()(cell3)
+            cell3 = layers.Activation('relu')(cell3)
+            cell4 = layers.SeparableConv2D(output_filter//cell_num, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+            cell4 = layers.BatchNormalization()(cell4)
+            cell4 = layers.Activation('relu')(cell4)
+            cell4 = layers.SeparableConv2D(output_filter//cell_num, (3,3), padding="same", kernel_initializer='he_uniform')(cell4)
+            cell4 = layers.BatchNormalization()(cell4)
+            cell4 = layers.Activation('relu')(cell4)
+
+            x = layers.Concatenate()([cell1,cell2,cell3,cell4])
+            return x
+
+
+        inputs = layers.Input(shape=input_shape)
+        x = inputs
+
+        x = layers.Conv2D(32, (3,3), strides=2, padding="same", kernel_initializer='he_uniform')(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation('relu')(x)
+        x = layers.Conv2D(64, (3,3), padding="same", kernel_initializer='he_uniform')(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation('relu')(x)
+
+        residual = x
+        residual = layers.Conv2D(128, (1,1), strides=1, padding="same", kernel_initializer='he_uniform')(residual)
+        residual = layers.BatchNormalization()(residual)
+        x = modified_net(x, output_filter=128)
+        x = layers.add([x, residual])
+        x = layers.Activation('relu')(x)
+
+        residual = layers.Conv2D(256, (1,1), strides=1, padding="same", kernel_initializer='he_uniform')(x)
+        residual = layers.BatchNormalization()(residual)
+        x = modified_net(x, output_filter=256)
+        x = layers.add([x, residual])
+        x = layers.Activation('relu')(x)
+
+        x = layers.GlobalAveragePooling2D()(x)
+        x = layers.Dropout(0.5)(x)
+        outputs = layers.Dense(1, activation='softmax')(x)
+
+        model = keras.Model(inputs=inputs, outputs=outputs)
+        
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            metrics=getMetrics("all")
+        )
+    
+    return model
+
+
+####################################################################################################
+
+
+
 
 
 
@@ -1150,7 +1510,7 @@ def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
             model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
-            optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer=optimizers.Adam(lr=1e-4),
             metrics=getMetrics("all")
         )
     return model
@@ -1159,30 +1519,17 @@ def loadSampleRnn(input_shape=(5,256,256,3),weights_path=None):
 ### ConvLSTM ###
 def loadConvLSTM(input_shape=(5,256,256,3),weights_path=None):
     with strategy.scope():
-        # model = models.Sequential(name="ConvLSTM")
-        # model.add(layers.ConvLSTM2D(32, (3, 3), activation='relu', padding='same', return_sequences=True, input_shape=input_shape))
-        # model.add(layers.Dropout(0.5))
-        # model.add(layers.ConvLSTM2D(64, (3, 3), activation='relu', padding='same', return_sequences=True))
-        # # model.add(layers.Dropout(0.5))
-        # # model.add(layers.ConvLSTM2D(128, (3, 3), activation='relu', padding='same', return_sequences=True))
-        # # model.add(layers.Dropout(0.5))
-        # # model.add(layers.ConvLSTM2D(256, (3, 3), activation='relu', padding='same', return_sequences=False))
-        # model.add(layers.Flatten())
-        # model.add(layers.Dense(128, activation='relu'))
-        # model.add(layers.Dropout(0.5))
-        # model.add(layers.Dense(1, activation='sigmoid'))
-
         inputs = layers.Input(shape=input_shape)
-        x = layers.ConvLSTM2D(32, (3, 3), activation='relu', padding='same', return_sequences=True, input_shape=input_shape)(inputs)
+        x = layers.ConvLSTM2D(16, (3, 3), activation='relu', padding='same', return_sequences=True, data_format="channels_last")(inputs)
         x = layers.BatchNormalization(momentum=0.6)(x)
         x = layers.Dropout(0.5)(x)
-        x = layers.ConvLSTM2D(64, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
+        x = layers.ConvLSTM2D(32, (3, 3), activation='relu', padding='same', return_sequences=True, data_format="channels_last")(x)
         x = layers.BatchNormalization(momentum=0.7)(x)
         x = layers.Dropout(0.5)(x)
-        x = layers.ConvLSTM2D(128, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
-        x = layers.BatchNormalization(momentum=0.8)(x)
-        x = layers.Dropout(0.5)(x)
-        x = layers.ConvLSTM2D(256, (3, 3), activation='relu', padding='same', return_sequences=True)(x)
+        # x = layers.ConvLSTM2D(64, (3, 3), activation='relu', padding='same', return_sequences=True, data_format="channels_last")(x)
+        # x = layers.BatchNormalization(momentum=0.8)(x)
+        # x = layers.Dropout(0.5)(x)
+        # x = layers.ConvLSTM2D(128, (3, 3), activation='relu', padding='same', return_sequences=True, data_format="channels_last")(x)
         x = layers.Flatten()(x)
         x = layers.Dense(128, activation='relu')(x)
         x = layers.BatchNormalization(momentum=0.8)(x)
@@ -1194,7 +1541,50 @@ def loadConvLSTM(input_shape=(5,256,256,3),weights_path=None):
             model.load_weights(weights_path)
         model.compile(
             loss='binary_crossentropy',
-            optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer=optimizers.Adam(lr=1e-4),
+            metrics=getMetrics("all")
+        )
+    return model
+
+
+### SampleViT(使えない) ###
+def loadSampleViT(input_shape=(5,256,256,3),weights_path=None):
+    with strategy.scope():
+
+        num_frames, height, width, channels = input_shape
+        # Transformer parameters
+        embedding_dim = 64
+        num_heads = 4
+        ff_dim = 128
+        # Encoder
+        inputs = layers.Input(shape=(num_frames, height, width, channels))
+        x = layers.Reshape((num_frames, height * width, channels))(inputs)
+        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embedding_dim // num_heads)(x, x)
+        x = layers.Dropout(0.5)(x)
+        print(x.shape)
+        x = layers.Reshape((num_frames, height, width, channels))(x)
+        print(x.shape)
+        # Convolutional layers
+        x = layers.Conv1D(filters=64, kernel_size=3, activation='relu')(x)
+        print(x.shape)
+        x = layers.Conv1D(filters=128, kernel_size=3, activation='relu')(x)
+        print(x.shape)
+        x = layers.GlobalMaxPooling1D()(x)
+        x = layers.Dropout(0.5)(x)
+        # Classifier
+        x = layers.Flatten()(x)
+        x = layers.Dense(ff_dim, activation='relu')(x)
+        x = layers.Dropout(0.5)(x)
+        outputs = layers.Dense(1, activation='sigmoid')(x)
+        # Model
+        model = models.Model(inputs, outputs, name="ViT")
+
+        if weights_path != None:
+            model.load_weights(weights_path)
+        model.compile(
+            loss='binary_crossentropy',
+            # optimizer=optimizers.SGD(lr=1e-4, momentum=0.9),
+            optimizer=optimizers.Adam(learning_rate=1e-4),
             metrics=getMetrics("all")
         )
     return model
