@@ -35,6 +35,7 @@ import torch
 print("TORCH VERSION: "+torch.__version__)
 # import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as init
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
@@ -51,6 +52,10 @@ from nni.retiarii import model_wrapper
 print("NII VERSION: "+nni.__version__)
 print()
 
+
+##### GPU1枚の最大メモリ量 #####
+GPU_MEMORY_LIMIT = 31.0 #RAIDEN
+# GPU_MEMORY_LIMIT = 11.0 #GHPC
 
 
 ##### デバイスを指定 #####
@@ -336,7 +341,7 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
                 {
                     'epoch': epoch_idx+1,
                     'loss': train_loss,
-                    'model_state_dict': model.state_dict(),
+                    'model_state_dict': model.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
                 save_path.format(epoch=epoch_idx+1, loss=train_loss, accuracy=accuracy, acc=accuracy, auc=auc, precision=precision, recall=recall, specificity=specificity, f1=f1, val_loss=val_loss, val_accuracy=val_accuracy, val_acc=val_accuracy, val_auc=val_auc, val_precision=val_precision, val_recall=val_recall, val_specificity=val_specificity, val_f1=val_f1)
@@ -470,6 +475,20 @@ def test_epoch(model, device, test_dataloader, loss_fn, callbacks=None, metrics_
 
 
 
+
+
+### 損失関数取得 ###
+def getCriterion(class_weights, device):
+    weight = torch.tensor(list(class_weights.values()), dtype=torch.float).to(device)
+    if len(weight)==2:
+        weight[1] = weight[1] / weight[0]
+        weight[0] = weight[0] / weight[0]
+        criterion = nn.BCEWithLogitsLoss(pos_weight=weight[1])
+        # criterion = nn.BCELoss()
+    else:
+        criterion = nn.CrossEntropyLoss(weight=weight)
+        # criterion = nn.NLLLoss()
+    return criterion
 
 
 ### Metricsリスト取得 ###
@@ -750,17 +769,183 @@ def dispImages(dataloader=None, file_path='./image_sample.jpg', model=None, clas
         if model is not None:
             model.eval()
             with torch.no_grad():
-                p = model(image)
-                print(p)
+                output = model(image)
+                if len(classes) == 2:
+                    predict = output[0].to('cpu').detach().numpy().copy()[0]
+                    predict_label = 1 if output[0].to('cpu').detach().numpy().copy()[0] >= 0.5 else 0
+                else:
+                    predict = np.max(output[0].to('cpu').detach().numpy().copy())
+                    predict_label = np.argmax(output[0].to('cpu').detach().numpy().copy())
         image = image[0].permute(1,2,0).to('cpu').detach().numpy().copy()
         _r= image_idx//col
         _c= image_idx%col
-        ax[_r,_c].set_title(label.item(), fontsize=14, color='black')
+        # mpl_color_list_str = ["blue","red","green","brown","orange","purple","pink","gray","olive","cyan"]
+        # str_color = mpl_color_list_str[label.item()]
+        str_color = "red" if label.item()==predict_label else "blue"
+        ax[_r,_c].set_title(f"Label:{label.item()}, Pred: {predict_label}({predict:.4f})", fontsize=8, color=str_color)
         ax[_r,_c].axes.xaxis.set_visible(False)
         ax[_r,_c].axes.yaxis.set_visible(False)
         ax[_r,_c].imshow(image)
     plt.savefig(file_path,dpi=100)
     plt.clf()
+
+
+### 何枚かの画像をテストして表示 ###
+def saveTest(
+        data_num=10,
+        file_path='./image_sample.jpg',
+        model=None,
+        data_dir=os.getenv('FAKE_DATA_PATH'),
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        transform=getTransforms(),
+        validation_rate=0.1,
+        test_rate=0.1
+    ):
+    disp_dataloader = getMiniCelebDataLoader(
+        data_num=data_num,
+        data_dir=data_dir,
+        classes=classes,
+        transform=transform,
+        validation_rate=validation_rate,
+        test_rate=test_rate
+    )
+    dispImages(
+        dataloader=disp_dataloader,
+        file_path=file_path,
+        model=model,
+        classes=classes
+    )
+    return
+
+
+### ヒートマップ表示(動作しない) ###
+def saveHeatMap(
+        model,
+        # device,
+        data_num=4,
+        file_path='./image_sample.jpg',
+        data_dir=os.getenv('FAKE_DATA_PATH'),
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        transform=getTransforms(),
+        validation_rate=0.1,
+        test_rate=0.1
+    ):
+
+    plt.clf()
+
+    disp_dataloader = getMiniCelebDataLoader(
+        data_num=data_num,
+        data_dir=data_dir,
+        classes=classes,
+        transform=transform,
+        validation_rate=validation_rate,
+        test_rate=test_rate
+    )
+
+    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget, BinaryClassifierOutputTarget
+    from pytorch_grad_cam.utils.image import show_cam_on_image
+    from pytorch_grad_cam import GradCAM
+
+    model.eval()
+    with torch.no_grad():
+        # target_layer = [model.modules().conv1]
+        target_layer = get_layer_list(model)[2]
+        cam = GradCAM(
+            model=model, target_layers=[target_layer], use_cuda=torch.cuda.is_available()
+        )
+
+        col = 2
+        row = math.ceil(len(disp_dataloader)/col)
+        fig, ax = plt.subplots(nrows=row, ncols=col*2, figsize=(col*2*2,row*2+1))
+        fig.suptitle("HeatMap", fontsize=20, color='black')
+
+        for image_idx, (image, label) in enumerate(disp_dataloader):
+            grayscale_cam = cam(
+                input_tensor=image,
+                # targets=[ClassifierOutputTarget(label)] if len(classes)>2 else [BinaryClassifierOutputTarget(label)],
+                targets=[ClassifierOutputTarget(torch.argmax(label, dim=1).item())] if len(classes)>2 else [BinaryClassifierOutputTarget(label.item())],
+            )
+
+            _r= image_idx//col
+            _c_i= (image_idx%col)*2
+            _c_h= (image_idx%col)*2+1
+            # 通常画像プロット
+            ax[_r,_c_i].set_title(f"label: {label.item()}", fontsize=16, color="black")
+            ax[_r,_c_i].axes.xaxis.set_visible(False)
+            ax[_r,_c_i].axes.yaxis.set_visible(False)
+            ax[_r,_c_i].imshow(image.permute(1, 2, 0).numpy())
+            # ヒートマッププロット
+            grayscale_cam = grayscale_cam[0, :]
+            visualization = show_cam_on_image(image.permute(1, 2, 0).numpy(), grayscale_cam, use_rgb=True)
+            ax[_r,_c_h].axes.xaxis.set_visible(False)
+            ax[_r,_c_h].axes.yaxis.set_visible(False)
+            ax[_r,_c_h].imshow(visualization)
+    plt.clf()
+    return
+
+
+### batch_sizeの見積もり(なんかめちゃ時間かかるから未使用) ###
+def estimate_batch_size(model, device, dataloader, gpu_memory_limit=31.0, num_gpus=4):
+
+    # ダミーデータを生成してバッチサイズを調整する
+    batch_size = 1
+    dummy_input = torch.randn(batch_size, *dataloader.dataset[0][0].shape).to(device)
+    model = model.to(device)
+
+    # バッチサイズを増やしながらGPUのメモリ容量を確認する
+    while True:
+        sys.stdout.write(str(batch_size) + "\n")
+        try:
+            # バッチサイズを増やしてモデルを実行する
+            dummy_loader = DataLoader(dataloader.dataset, batch_size=batch_size, shuffle=False)
+            with torch.no_grad():
+                for inputs, _ in dummy_loader:
+                    inputs = inputs.to(device)
+                    _ = model(inputs)
+
+            # GPUのメモリ使用量を取得する
+            memory_allocated = torch.cuda.max_memory_allocated(device) / (1024 ** 3)  # GB
+
+            # バッチサイズが制約に達したら終了する
+            if memory_allocated > gpu_memory_limit * num_gpus:
+                break
+
+            # バッチサイズを増やす
+            batch_size *= 2
+
+        except RuntimeError as e:
+            if "CUDA out of memory" in str(e):
+                break
+            else:
+                raise
+
+    # バッチサイズをGPU枚数で割る
+    batch_size //= num_gpus
+
+    return batch_size
+
+### batch_sizeの取得(RAIDEN)(32GB/GPU) ###
+def get_batch_size_per_gpu_raiden(structure_name):
+    bs_dict = {
+        "XceptionNet": 128,
+        "Vgg16": 128,
+        "DenseNet201": 32, #未検証
+        "EfficientNetV2L": 32,
+        "EfficientNetV2M": 32, #未検証
+        "ViT_L16": 32, #未検証
+    }
+    if structure_name in bs_dict:
+        return bs_dict[structure_name]
+    return 32
+
+### batch_sizeの取得(GHPC)(12GB/GPU) ###
+def get_batch_size_per_gpu_ghpc(structure_name):
+    bs_dict = {
+        "Vgg16": 32,
+    }
+    if structure_name in bs_dict:
+        return bs_dict[structure_name]
+    return 32    
 
 ####################################################################################################
 
@@ -792,8 +977,8 @@ def dispImages(dataloader=None, file_path='./image_sample.jpg', model=None, clas
 
 ### Celebのimagepathリスト取得 ###
 def makeImagePathList_Celeb(
-        data_dir='/data/toshikawa/datas',
-        classes=['Celeb-real-image-face', 'Celeb-synthesis-image-face'],
+        data_dir=os.getenv('FAKE_DATA_PATH'),
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         validation_rate=0.1,
         test_rate=0.1,
         data_type=None
@@ -921,8 +1106,8 @@ class ImageDataset(torch.utils.data.Dataset):
 def getCelebDataLoader(
         batch_size=64,
         transform=None,
-        data_dir='/data/toshikawa/datas',
-        classes=['Celeb-real-image-face', 'Celeb-synthesis-image-face'],
+        data_dir=os.getenv('FAKE_DATA_PATH'),
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         image_size=(3,256,256),
         validation_rate=0,
         test_rate=0,
@@ -967,12 +1152,10 @@ def getCelebDataLoader(
 def getMiniCelebDataLoader(
         data_num=10,
         transform=getTransforms(),
-        data_dir='/data/toshikawa/datas',
-        classes=['Celeb-real-image-face', 'Celeb-synthesis-image-face'],
-        image_size=(3,256,256),
+        data_dir=os.getenv('FAKE_DATA_PATH'),
+        classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         validation_rate=0.1,
-        test_rate=0.1,
-        shuffle=False
+        test_rate=0.1
     ):
 
     # パス取得
@@ -985,10 +1168,21 @@ def getMiniCelebDataLoader(
     )
 
     # ランダム抽出
-    test_paths = random.choices(test_paths, k=data_num)
+    data_list = []
+    for c in classes:
+        data_list.append([])
+    data_num_per_label = data_num // len(classes)
+    remainder = data_num % len(classes)
+    for tp in test_paths:
+        data_list[int(tp[1])].append(tp)
+    test_paths_choiced = []
+    for dl in data_list:
+        test_paths_choiced += random.choices(dl, k=data_num_per_label)
+    if remainder > 0:
+        test_paths_choiced += random.choices(data_list[-1], k=remainder)
 
     # Dataset作成
-    test_dataset = ImageDataset(data=test_paths,num_classes=len(classes),image_size=image_size,transform=transform)
+    test_dataset = ImageDataset(data=test_paths_choiced,num_classes=len(classes),transform=transform)
 
     # DataLoader作成
     test_dataloader = DataLoader(test_dataset, batch_size=1)
@@ -1109,7 +1303,7 @@ def measureTime(fn):
 # モデル構造
 ####################################################################################################
 
-# SampleCnn
+# SampleCnn (MNIST用)
 @model_wrapper
 class SampleCnn(nn.Module):
     def __init__(self, in_channels=1, num_classes=10):
@@ -1147,220 +1341,558 @@ class SampleCnn(nn.Module):
         return x
 
 
-# class SeparableConv2d(nn.Module):
-#     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1):
-#         super(SeparableConv2d, self).__init__()
-#         self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels)
-#         self.pointwise = nn.Conv2d(in_channels, out_channels, 1)
-
-#     def forward(self, x):
-#         x = self.depthwise(x)
-#         x = self.pointwise(x)
-#         return x
-
-# # XceptionNet
-# class XceptionNet(nn.Module):
-#     def __init__(self, in_channels=1, num_classes=10):
-#         super(XceptionNet, self).__init__()
-#         last_dim = 1 if num_classes==2 else num_classes
-
-#         self.entry_flow = nn.Sequential(
-#             nn.Conv2d(in_channels, 32, 3, 2, 1),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(32, 64, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(64, 128, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(128, 128, 3, 1, 1),
-#             nn.MaxPool2d(3, 2, 1)
-#         )
-#         self.middle_flow = nn.Sequential(
-#             SeparableConv2d(128, 256, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(256, 256, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(256, 256, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(256, 256, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(256, 256, 3, 1, 1),
-#             nn.MaxPool2d(3, 2, 1)
-#         )
-#         self.exit_flow = nn.Sequential(
-#             SeparableConv2d(256, 512, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(512, 512, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             SeparableConv2d(512, 512, 3, 1, 1),
-#             nn.ReLU(inplace=True),
-#             nn.AdaptiveAvgPool2d(1)
-#         )
-#         self.fc = nn.Linear(512, last_dim)
-#         self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-#     def forward(self, x):
-#         x = self.entry_flow(x)
-#         x = self.middle_flow(x)
-#         x = self.exit_flow(x)
-#         x = x.view(x.size(0), -1)
-#         x = self.fc(x)
-#         x = self.last_activation(x)
-#         return x
 
 
+### modelのlayer_list取得 ###
+def get_layer_list(model, withName=False):
+    layer_list = []
+    for idx, (name, module) in enumerate(model.named_modules()):
+        if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear):
+            if withName:
+                layer_list.append((name, module))
+            else:
+                layer_list.append(module)
+        elif (idx != 0) and isinstance(module, torch.nn.Module):
+            sub_layer_list = get_layer_list(module)
+            if withName:
+                layer_list.extend([(f"{name}.{sub_name}", sub_module) for sub_name, sub_module in sub_layer_list])
+            else:
+                layer_list.extend([sub_module for sub_module in sub_layer_list])
+    return layer_list
+
+### modelのパラメータ初期化 ###
+def initialize_parameters(model):
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            # init.xavier_uniform_(m.weight) # Xavierの初期値
+            init.kaiming_uniform_(m.weight) # Heの初期値 (活性化関数がReLUの場合)
+            if m.bias is not None:
+                init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            init.constant_(m.weight, 1)
+            init.constant_(m.bias, 0)
+
+
+### VGGNet ###
+def Vgg16(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vgg16(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### InceptionNet ###
+def InceptionV3(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.inception_v3(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.Conv2d_1a_3x3.conv
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.Conv2d_1a_3x3.conv = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### ResNet ###
+def ResNet18(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.resnet18(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ResNet50(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.resnet50(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ResNet101(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.resnet101(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ResNet152(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.resnet152(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def WideResNet50_2(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.wide_resnet50_2(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### DenseNet ###
+def DenseNet121(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.densenet121(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features.conv0
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features.conv0 = new_conv
+    # 最終層の変更
+    model.classifier = nn.Linear(model.classifier.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def DenseNet161(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.densenet161(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features.conv0
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features.conv0 = new_conv
+    # 最終層の変更
+    model.classifier = nn.Linear(model.classifier.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def DenseNet169(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.densenet169(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features.conv0
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features.conv0 = new_conv
+    # 最終層の変更
+    model.classifier = nn.Linear(model.classifier.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def DenseNet201(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.densenet201(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features.conv0
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features.conv0 = new_conv
+    # 最終層の変更
+    model.classifier = nn.Linear(model.classifier.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### GoogleNet ###
+def GoogleNet(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.googlenet(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv1
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv1 = new_conv
+    # 最終層の変更
+    model.fc = nn.Linear(model.fc.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### MobileNet ###
+def MobileNetV2(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.mobilenet_v2(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def MobileNetV3S(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.mobilenet_v3_small(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def MobileNetV3L(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.mobilenet_v3_large(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### MNASNet ###
+def MnasNet(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.mnasnet1_0(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.layers[0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.layers[0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### EfficientNet ###
+def EfficientNetB7(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.efficientnet_b7(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def EfficientNetV2S(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.efficientnet_v2_s(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def EfficientNetV2M(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.efficientnet_v2_m(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def EfficientNetV2L(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.efficientnet_v2_l(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.features[0][0]
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.features[0][0] = new_conv
+    # 最終層の変更
+    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+
+### ViT ###
+def ViT_B16(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vit_b_16(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv_proj
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv_proj = new_conv
+    # 最終層の変更
+    model.heads.head = nn.Linear(model.heads.head.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ViT_B32(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vit_b_32(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv_proj
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv_proj = new_conv
+    # 最終層の変更
+    model.heads.head = nn.Linear(model.heads.head.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ViT_L16(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vit_l_16(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv_proj
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv_proj = new_conv
+    # 最終層の変更
+    model.heads.head = nn.Linear(model.heads.head.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ViT_L32(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vit_l_32(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv_proj
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv_proj = new_conv
+    # 最終層の変更
+    model.heads.head = nn.Linear(model.heads.head.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
+
+def ViT_H14(in_channels=1, num_classes=10, pretrained=False):
+    model = torchvision.models.vit_h_14(pretrained=pretrained, progress=False)
+    last_dim = 1 if num_classes==2 else num_classes
+    # 開始層の変更
+    old_conv = model.conv_proj
+    new_conv = nn.Conv2d(
+        in_channels,
+        old_conv.out_channels,
+        kernel_size=old_conv.kernel_size,
+        stride=old_conv.stride,
+        padding=old_conv.padding,
+        bias=False if (old_conv.bias is None) else True
+    )
+    model.conv_proj = new_conv
+    # 最終層の変更
+    model.heads.head = nn.Linear(model.heads.head.in_features, last_dim)
+    # パラメータの初期化
+    initialize_parameters(model)
+    return model
 
 
 
 
-class Vgg16(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(Vgg16, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.vgg16(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class InceptionV3(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(InceptionV3, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.inception_v3(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class ResNet18(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(ResNet18, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.resnet18(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class ResNet152(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(ResNet152, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.resnet152(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class WideResNet50_2(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(WideResNet50_2, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.wide_resnet50_2(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class DenseNet161(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(DenseNet161, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.densenet161(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class GoogleNet(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(GoogleNet, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.googlenet(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class MobileNet(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(MobileNet, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.mobilenet_v2(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class MnasNet(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(MnasNet, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.mnasnet1_0(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
-
-class EfficientNetB7(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(EfficientNetB7, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.efficientnet_b7(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
 
 
 
@@ -1368,20 +1900,7 @@ class EfficientNetB7(nn.Module):
 
 
 
-class Sample(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10, pretrained=False):
-        super(Sample, self).__init__()
-        last_dim = 1 if num_classes==2 else num_classes
-        self.pretrained = pretrained
-        self.main_structure = torchvision.models.mnasnet1_0(pretrained=pretrained, progress=False)
-        self.fc = nn.Linear(1000, last_dim)
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
 
-    def forward(self, x):
-        x = self.main_structure(x)
-        x = self.fc(x)
-        x = self.last_activation(x)
-        return x
 
 
 # @model_wrapper
@@ -1498,6 +2017,8 @@ class XceptionNet(nn.Module):
 
         self.fc = nn.Linear(2048, last_dim)
         self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
+        
+        initialize_parameters(self)
 
         # #------- init weights --------
         # for m in self.modules():
@@ -1546,7 +2067,7 @@ class XceptionNet(nn.Module):
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-        x = self.last_activation(x)
+        # x = self.last_activation(x)
         return x
 
     def forward(self, input):

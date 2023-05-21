@@ -13,23 +13,21 @@
 
 
 from common_import import *
-# pprint([s for s in dir(torchvision.models) if s[0].isupper()], compact=True)
-# exit()
+
 
 #---------------------------------------------------------------------------------------------------
 # ハイパーパラメータなどの設定値
 
 structure_name = 'XceptionNet'
 # structure_name = 'Vgg16'
-# structure_name = 'InceptionV3'
+# structure_name = 'EfficientNetV2L'
 epochs = 50
 gpu_count = GPU_COUNT
-# batch_size_per_gpu = 32 # 12GB/GPUの時 (これで8GBずつくらい)
-batch_size_per_gpu = 128 # 32GB/GPUの時 (これで27GBずつくらい)
+batch_size_per_gpu = get_batch_size_per_gpu_raiden(structure_name)
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
 test_rate = 0.1
-cp_period = 1
+cp_period = 2
 data_dir = os.getenv('FAKE_DATA_PATH')
 classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
 image_size = (3, 256, 256)
@@ -171,29 +169,20 @@ transform = getTransforms(
 )
 
 
-# #---------------------------------------------------------------------------------------------------
-# # テスト領域
-# disp_dataloader = getMiniCelebDataLoader(
-#     data_dir=data_dir,
-#     classes=classes,
-#     validation_rate=validation_rate,
-#     test_rate=test_rate
-# )
-# dispImages(
-#     data_loader=disp_dataloader,
-#     file_path='aaa.jpg',
-#     model=model,
-#     classes=classes
-# )
-# exit()
-
-
+#---------------------------------------------------------------------------------------------------
+# batch_sizeの自動推定 (実行にめちゃくちゃ時間がかかる)
+# if first_training:
+#     sample_dataloader = getMiniCelebDataLoader(
+#         data_dir=data_dir,
+#         classes=classes,
+#         transform=transform
+#     )
+#     batch_size_per_gpu = estimate_batch_size(model, device, sample_dataloader, gpu_memory_limit=GPU_MEMORY_LIMIT, num_gpus=gpu_count)
+#     batch_size = batch_size_per_gpu * gpu_count
 
 
 #---------------------------------------------------------------------------------------------------
 # 学習用／評価用のデータセットの作成
-
-# CelebData取得
 print(f"START CREATE DATASET: {now()}") 
 train_dataloader, validation_dataloader, test_dataloader, \
 data_num, class_file_num, class_weights = getCelebDataLoader(
@@ -213,18 +202,18 @@ print("\n\n")
 
 #---------------------------------------------------------------------------------------------------
 # 損失関数の設定
-if len(classes)==2:
-    criterion = nn.BCELoss()
-else:
-    criterion = nn.CrossEntropyLoss()
+criterion = getCriterion(class_weights,device)
 
 
 #---------------------------------------------------------------------------------------------------
 # 最適化手法の設定
-if first_training:
-    optimizer = torch.optim.Adam(model.parameters(), lr = 0.01) 
-else:
-    optimizer = torch.load(cp_path)['optimizer_state_dict']
+optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
+if not first_training:
+    optimizer.load_state_dict(torch.load(cp_path)['optimizer_state_dict'])
+    for state in optimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.to(device)
 
 #---------------------------------------------------------------------------------------------------
 # Metrics取得
@@ -359,6 +348,29 @@ print("\n\n")
 
 
 #---------------------------------------------------------------------------------------------------
+# テストして保存
+saveTest(
+    data_num=20,
+    file_path=model_dir+"/test.jpg",
+    model=model,
+    data_dir=data_dir,
+    classes=classes,
+    validation_rate=validation_rate,
+    test_rate=test_rate
+)
+# saveHeatMap(
+#     model,
+#     # device,
+#     data_num=4,
+#     file_path=model_dir+"/heatmap.jpg",
+#     data_dir=data_dir,
+#     classes=classes,
+#     validation_rate=validation_rate,
+#     test_rate=test_rate
+# )
+
+
+#---------------------------------------------------------------------------------------------------
 # 結果グラフ描画
 print(f"START DRAW RESULT: {now()}")
 
@@ -385,3 +397,11 @@ if 'roc' in test_history:
 
 print(f"FINISH DRAW RESULT: {now()}")
 print("\n\n")
+
+
+
+#---------------------------------------------------------------------------------------------------
+# 終了証明
+f = open(model_dir+"/fin", 'w')
+f.write('')  # 何も書き込まなくてファイルは作成されました
+f.close()
