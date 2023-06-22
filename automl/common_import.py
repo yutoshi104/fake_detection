@@ -48,6 +48,9 @@ import torchsummary
 
 import nni
 import nni.retiarii.nn.pytorch as nn
+import nni.retiarii.strategy as strategy
+from nni.retiarii.evaluator import FunctionalEvaluator
+from nni.retiarii.experiment.pytorch import RetiariiExperiment, RetiariiExeConfig
 from nni.retiarii import model_wrapper
 print("NII VERSION: "+nni.__version__)
 print()
@@ -105,7 +108,7 @@ load_dotenv()
 ####################################################################################################
 
 ### 学習 ###
-def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, validation_dataloader=None, save_step=None, save_path="./model_weights_{epoch:03d}_{loss:.4f}.pth", project_dir="./", es_flg=False, es_patience=7, callbacks=None, initial_epoch=0, metrics_dict={}):
+def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation_dataloader=None, cp_step=None, cp_path="./model_weights_{epoch:03d}_{loss:.4f}.pth", project_dir="./", es_flg=False, es_patience=7, callbacks=None, initial_epoch=0, metrics_dict={}):
     """
     pytorchのモデルを学習する。
     
@@ -125,9 +128,9 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
         エポック
     validation_dataloder : torch.utils.data.DataLoader
         検証データ
-    save_step : None or int
+    cp_step : None or int
         何エポックごとに重みを保存するか。1の場合、毎エポック。Noneの場合は保存しない。
-    save_path : str
+    cp_path : str
         重みを保存するパス
     callback : dict or None
         コールバック関数。実行したい位置によって辞書のkeyを指定する。
@@ -156,11 +159,15 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
     accuracy = auc = precision = recall = specificity = f1 = None # format用変数
     val_loss = val_accuracy = val_auc = val_precision = val_recall = val_specificity = val_f1 = None # format用変数
 
+    # 過去のhistoryを読み込み
+    past_history = None
+    if os.path.isfile(project_dir+"/history.json"):
+        past_history = loadParams(filename=project_dir+"/history.json")
+
     # early stoppingを設定
     if es_flg:
-        es = EarlyStopping(patience=es_patience, verbose=False, delta=0, path=project_dir+'/checkpoint_minloss.pt')
-        if os.path.isfile(project_dir+"/history.json"):
-            past_history = loadParams(filename=project_dir+"/history.json")
+        es = EarlyStopping(patience=es_patience, verbose=False, delta=0, path=project_dir+'/checkpoint_minloss.pth')
+        if (past_history is not None) and ('loss' in past_history):
             for loss in past_history['loss']:
                 es(loss,model)
                 if es.early_stop:
@@ -186,11 +193,16 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
 
         # callbackの実行
         if (callbacks is not None) and ('on_epoch_begin' in callbacks) and callable(callbacks['on_epoch_begin']):
-            callbacks['on_epoch_begin']()
+            callbacks['on_epoch_begin'](model=model)
 
-        print_log(f"Epoch: {epoch_idx+1:>3}/{epoch}")
+        print_log(f"Epoch: {epoch_idx+1:>3}/{initial_epoch+epoch}")
 
         ###学習###
+
+        # callbackの実行
+        if (callbacks is not None) and ('on_train_begin' in callbacks) and callable(callbacks['on_train_begin']):
+            callbacks['on_train_begin'](model=model)
+
         # モデルを訓練モードにする
         model.train()
 
@@ -270,8 +282,16 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
             f1 = train_metric if k=='f1' else f1
         print_log()
 
+        # callbackの実行
+        if (callbacks is not None) and ('on_train_end' in callbacks) and callable(callbacks['on_train_end']):
+            callbacks['on_train_end'](model=model)
+
         ###検証###
         if val_flg:
+            
+            # callbackの実行
+            if (callbacks is not None) and ('on_validation_begin' in callbacks) and callable(callbacks['on_validation_begin']):
+                callbacks['on_validation_begin'](model=model)
 
             # モデルを評価モードにする
             model.eval()
@@ -335,8 +355,12 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
                     val_f1 = train_metric if k=='val_f1' else val_f1
                 print_log()
 
-        # モデルの重みの保存
-        if (save_step is not None) and ((epoch_idx+1) % save_step == 0):
+            # callbackの実行
+            if (callbacks is not None) and ('on_validation_end' in callbacks) and callable(callbacks['on_validation_end']):
+                callbacks['on_validation_end'](model=model)
+
+        # モデルの重みの保存(check point)
+        if (cp_step is not None) and ((epoch_idx+1) % cp_step == 0):
             torch.save(
                 {
                     'epoch': epoch_idx+1,
@@ -344,7 +368,30 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
                     'model_state_dict': model.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
-                save_path.format(epoch=epoch_idx+1, loss=train_loss, accuracy=accuracy, acc=accuracy, auc=auc, precision=precision, recall=recall, specificity=specificity, f1=f1, val_loss=val_loss, val_accuracy=val_accuracy, val_acc=val_accuracy, val_auc=val_auc, val_precision=val_precision, val_recall=val_recall, val_specificity=val_specificity, val_f1=val_f1)
+                cp_path.format(epoch=epoch_idx+1, loss=train_loss, accuracy=accuracy, acc=accuracy, auc=auc, precision=precision, recall=recall, specificity=specificity, f1=f1, val_loss=val_loss, val_accuracy=val_accuracy, val_acc=val_accuracy, val_auc=val_auc, val_precision=val_precision, val_recall=val_recall, val_specificity=val_specificity, val_f1=val_f1)
+            )
+
+        # モデルの重みの保存(最良モデル)
+        if (past_history is not None) and (len(past_history['loss']) > 0) and loss < min(past_history['loss']):
+            torch.save(
+                {
+                    'epoch': epoch_idx+1,
+                    'loss': train_loss,
+                    'model_state_dict': model.module.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                },
+                project_dir+"/min_loss.pth"
+            )
+        if val_flg and (past_history is not None) and ('val_loss' in past_history) and (len(past_history['val_loss']) > 0) and (val_loss < min(past_history['val_loss'])):
+            torch.save(
+                {
+                    'epoch': epoch_idx+1,
+                    'loss': train_loss,
+                    'val_loss': val_loss,
+                    'model_state_dict': model.module.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                },
+                project_dir+"/min_val_loss.pth"
             )
 
         # 時間計測
@@ -361,14 +408,14 @@ def train_epoch(model, device, train_dataloader, loss_fn, optimizer, epoch, vali
 
         # callbackの実行
         if (callbacks is not None) and ('on_epoch_end' in callbacks) and callable(callbacks['on_epoch_end']):
-            callbacks['on_epoch_end'](epoch=epoch_idx+1, history_epoch=history_epoch)
+            callbacks['on_epoch_end'](epoch=epoch_idx+1, history_epoch=history_epoch, model=model)
 
     return history
 
 
 
 ### 評価 ###
-def test_epoch(model, device, test_dataloader, loss_fn, callbacks=None, metrics_dict={}):
+def test(model, device, test_dataloader, loss_fn, callbacks=None, metrics_dict={}):
     """
     pytorchのモデルをテストする。
     
@@ -925,14 +972,15 @@ def estimate_batch_size(model, device, dataloader, gpu_memory_limit=31.0, num_gp
     return batch_size
 
 ### batch_sizeの取得(RAIDEN)(32GB/GPU) ###
-def get_batch_size_per_gpu_raiden(structure_name):
+def get_batch_size_per_gpu_raiden_celeb(structure_name):
     bs_dict = {
         "XceptionNet": 128,
         "Vgg16": 128,
-        "DenseNet201": 32, #未検証
+        "DenseNet201": 64, #未検証
         "EfficientNetV2L": 32,
-        "EfficientNetV2M": 32, #未検証
-        "ViT_L16": 32, #未検証
+        "EfficientNetV2M": 64, #未検証
+        "EfficientNetV2S": 128, #未検証?実行中
+        "MnasNet": 128,
     }
     if structure_name in bs_dict:
         return bs_dict[structure_name]
@@ -1789,7 +1837,7 @@ def EfficientNetV2L(in_channels=1, num_classes=10, pretrained=False):
     return model
 
 
-### ViT ###
+### ViT (入力を224にしないと使用できない) ###
 def ViT_B16(in_channels=1, num_classes=10, pretrained=False):
     model = torchvision.models.vit_b_16(pretrained=pretrained, progress=False)
     last_dim = 1 if num_classes==2 else num_classes
@@ -1891,33 +1939,213 @@ def ViT_H14(in_channels=1, num_classes=10, pretrained=False):
     return model
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# @model_wrapper
+### LightInceptionNetV1 ###
 class SeparableConv2d(nn.Module):
-    def __init__(self,in_channels,out_channels,kernel_size=1,stride=1,padding=0,dilation=1,bias=False):
-        super(SeparableConv2d,self).__init__()
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, bias=False, padding_mode='replicate'):
+        super(SeparableConv2d, self).__init__()
+        self.depthwise = nn.Conv2d(
+            in_channels, in_channels, kernel_size, stride, padding, dilation, groups=in_channels, bias=bias, padding_mode=padding_mode
+        )
+        self.pointwise = nn.Conv2d(in_channels, out_channels, 1, bias=bias)
 
-        self.conv1 = nn.Conv2d(in_channels,in_channels,kernel_size,stride,padding,dilation,groups=in_channels,bias=bias)
-        self.pointwise = nn.Conv2d(in_channels,out_channels,1,1,0,1,1,bias=bias)
-
-    def forward(self,x):
-        x = self.conv1(x)
+    def forward(self, x):
+        x = self.depthwise(x)
         x = self.pointwise(x)
         return x
 
+class LightInceptionModuleV1(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(LightInceptionModuleV1, self).__init__()
+        cell_num = 8
 
-# @model_wrapper
+        self.cell1_pool = nn.AvgPool2d(kernel_size=(2,2), stride=1, padding=(2//2, 2//2))
+        self.cell1_conv = SeparableConv2d(in_channels, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.easy = SeparableConv2d(in_channels, out_channels // cell_num, (1,1), stride=1, padding=(1//2, 1//2))
+        self.cell3 = SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.cell4 = SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.cell5 = nn.Sequential(
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2)),
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        )
+        self.cell6 = nn.Sequential(
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2)),
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        )
+        self.cell7 = nn.Sequential(
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2)),
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2)),
+            SeparableConv2d(out_channels // cell_num, out_channels // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        )
+        self.cell8_1 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.cell8_residual1 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (1,1), stride=1, padding=(1//2, 1//2))
+        self.cell8_2 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.cell8_residual2 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (1,1), stride=1, padding=(1//2, 1//2))
+        self.cell8_3 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (3,3), stride=1, padding=(3//2, 3//2))
+        self.cell8_residual3 = SeparableConv2d(out_channels // cell_num, out_channels // 2 // cell_num, (1,1), stride=1, padding=(1//2, 1//2))
+
+    def forward(self, x):
+        cell1 = self.cell1_pool(x)
+        cell1 = self.cell1_conv(x)
+        easy = self.easy(x)
+        cell2 = easy
+        cell3 = self.cell3(easy)
+        cell4 = self.cell4(easy)
+        cell5 = self.cell5(easy)
+        cell6 = self.cell6(easy)
+        cell7 = self.cell7(easy)
+        cell8_1 = self.cell8_1(easy)
+        cell8_residual1 = self.cell8_residual1(easy)
+        cell8_1 = torch.cat([cell8_residual1, cell8_1], dim=1)
+        cell8_2 = self.cell8_2(cell8_1)
+        cell8_residual2 = self.cell8_residual2(cell8_1)
+        cell8_2 = torch.cat([cell8_residual2, cell8_2], dim=1)
+        cell8_3 = self.cell8_3(cell8_2)
+        cell8_residual3 = self.cell8_residual3(cell8_2)
+        cell8_3 = torch.cat([cell8_residual3, cell8_3], dim=1)
+        y = torch.cat([cell1, cell2, cell3, cell4, cell5, cell6, cell7, cell8_3], dim=1)
+        return y
+
+class LightInceptionBlockV1(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(LightInceptionBlockV1, self).__init__()
+
+        self.red = nn.Sequential(
+            SeparableConv2d(in_channels, out_channels, kernel_size=1, stride=2, padding=1//2),
+            nn.BatchNorm2d(out_channels)
+        )
+        self.conv1 = nn.Sequential(
+            SeparableConv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        self.conv2 = nn.Sequential(
+            SeparableConv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(out_channels),
+            nn.MaxPool2d(kernel_size=(3,3), stride=2, padding=(3//2, 3//2))
+        )
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        red = self.red(x)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        y = x + red
+        return y
+
+class LightInceptionNetV1(nn.Module):
+    def __init__(self, in_channels=1, num_classes=10):
+
+        super().__init__()
+        self.in_channels = in_channels
+        self.num_classes = num_classes
+        last_dim = 1 if num_classes==2 else num_classes
+        repetition_num = 5
+
+        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = nn.Sequential(
+            SeparableConv2d(in_channels, 32, kernel_size=3, stride=2, padding=3//2),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True)
+        )
+        self.conv2 = nn.Sequential(
+            SeparableConv2d(32, 64, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True)
+        )
+        self.block1 = LightInceptionBlockV1(64,128)
+        self.block2 = LightInceptionBlockV1(128,256)
+        self.block3 = LightInceptionBlockV1(256,512)
+        self.conv3 = SeparableConv2d(512, 512, kernel_size=3, stride=1, padding=3//2)
+        repetition_list = []
+        for i in range(repetition_num):
+            layer_list = []
+            layer_list.append(nn.BatchNorm2d(512))
+            layer_list.append(nn.ReLU(inplace=True))
+            layer_list.append(LightInceptionModuleV1(512,512))
+            layer_list.append(nn.BatchNorm2d(512))
+            layer_list.append(nn.ReLU(inplace=True))
+            layer_list.append(LightInceptionModuleV1(512,512))
+            layer_list.append(nn.BatchNorm2d(512))
+            layer_list.append(nn.ReLU(inplace=True))
+            layer_list.append(nn.Dropout(0.3))
+            layer_list.append(LightInceptionModuleV1(512,512))
+            repetition_list.append(layer_list)
+        self.repetition_list = repetition_list
+        self.bn4 = nn.BatchNorm2d(512)
+        self.block4 = LightInceptionBlockV1(512,768)
+        self.conv5 = nn.Sequential(
+            LightInceptionModuleV1(768,768),
+            nn.BatchNorm2d(768),
+            nn.ReLU(inplace=True)
+        )
+        self.conv6 = nn.Sequential(
+            LightInceptionModuleV1(768,768),
+            nn.BatchNorm2d(768)
+        )
+        self.block5 = LightInceptionBlockV1(768,1024)
+        self.conv7 = nn.Sequential(
+            SeparableConv2d(1024, 1536, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(1536),
+            nn.ReLU(inplace=True)
+        )
+        self.conv8 = nn.Sequential(
+            SeparableConv2d(1536, 2048, kernel_size=3, stride=1, padding=3//2),
+            nn.BatchNorm2d(2048),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
+        )
+        self.global_avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv9 = nn.Sequential(
+            nn.Linear(2048, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5)
+        )
+        self.fc = nn.Linear(256, 1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.conv3(x)
+        for block in self.repetition_list:
+            red = x
+            for layer in block:
+                x = layer(x)
+            x = red + x
+        x = self.bn4(x)
+        x = self.relu(x)
+        x = self.block4(x)
+        red = x
+        x = self.conv5(x)
+        x = self.conv6(x)
+        x = red + x
+        x = self.relu(x)
+        x = self.block5(x)
+        x = self.conv7(x)
+        x = self.conv8(x)
+        x = self.global_avg_pool(x)
+        x = x.squeeze(dim=3).squeeze(dim=2)
+        x = self.conv9(x)
+        x = self.fc(x)
+        return x
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Block(nn.Module):
     def __init__(self,in_filters,out_filters,reps,strides=1,start_with_relu=True,grow_first=True):
         super(Block, self).__init__()
@@ -2074,6 +2302,209 @@ class XceptionNet(nn.Module):
         x = self.features(input)
         x = self.logits(x)
         return x
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################################################################################
+# モデル構造 (nni)
+####################################################################################################
+
+
+### 探索戦略取得 ###
+strategy_random = strategy.Random(dedup=True)
+
+# def getStrategy(strategy_name='random'):
+#     if lower(strategy_name) == 'random':
+#         strategy_instance = strategy.Random(dedup=True, seed=None)
+#         category = 'multi-trial'
+#     elif lower(strategy_name) == 'nas-rl':
+#         strategy_instance = strategy.PolicyBasedRL()
+#         category = 'multi-trial'
+#     elif lower(strategy_name) == 'random-oneshot':
+#         strategy_instance = strategy.RandomOneShot()
+#         category = 'one-shot'
+#     elif lower(strategy_name) == 'enas':
+#         strategy_instance = strategy.RandomOneShot()
+#         category = 'one-shot'
+
+#     return (strategy_instance, category)
+
+
+
+
+
+
+
+### モデル評価 ###
+def evaluate_model(model_cls):
+    global model, criterion, optimizer, transform, train_dataloader, validation_dataloader, test_data_loader
+    global epochs, trained_epochs, model_dir, cp_period, cp_dir, es_flg, train_metrics, test_metrics
+
+    callbacks = {}
+    def on_epoch_end(**kwargs):
+        # trained_epochsのインクリメント
+        incrementTrainedEpochs(params_path=model_dir+"/params.json")
+        # history.jsonに保存
+        saveHistory(kwargs['history_epoch'],history_path=model_dir+"/history.json")
+        # nniに保存
+        nni.report_intermediate_result(kwargs['val_acc'])
+    callbacks['on_epoch_end'] = on_epoch_end
+
+    train_epoch(
+        model,
+        device,
+        train_dataloader,
+        criterion,
+        optimizer,
+        epochs-trained_epochs,
+        initial_epoch=trained_epochs,
+        validation_dataloader=validation_dataloader,
+        cp_step=cp_period,
+        cp_path=cp_dir+"/cp_weights_{epoch:03d}-{accuracy:.4f}.pth",
+        project_dir=model_dir,
+        es_flg=es_flg,
+        metrics_dict=train_metrics,
+        callbacks=callbacks
+    )
+
+    test_history = test_epoch(
+        model,
+        device,
+        test_dataloader,
+        criterion,
+        metrics_dict=test_metrics
+    )
+    test_accuracy = test_history['accuracy']
+
+    # report final test result
+    nni.report_final_result(accuracy)
+
+
+@model_wrapper
+class NNINet(nn.Module):
+    def __init__(self, in_channels=1, num_classes=10):
+
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.num_classes = num_classes
+        last_dim = 1 if num_classes==2 else num_classes
+
+        self.conv1 = nn.LayerChoice([
+            nn.Conv2d(in_channels,32,3,2,0,bias=False),
+            SeparableConv2d(in_channels,32,3,2,0),
+            # DepthwiseSeparableConv(in_channels, 32)
+        ])
+        self.bn1 = nn.BatchNorm2d(32)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.conv2 = nn.LayerChoice([
+            nn.Conv2d(32,64,3,bias=False),
+            SeparableConv2d(32,64,3),
+            # DepthwiseSeparableConv(32, 64)
+        ])
+        self.bn2 = nn.BatchNorm2d(64)
+        #do relu here
+
+        self.block1=Block(64,128,2,2,start_with_relu=False,grow_first=True)
+        self.block2=Block(128,256,2,2,start_with_relu=True,grow_first=True)
+        self.block3=Block(256,728,2,2,start_with_relu=True,grow_first=True)
+
+        self.block4=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block5=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block6=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block7=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+
+        self.block8=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block9=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block10=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+        self.block11=Block(728,728,3,1,start_with_relu=True,grow_first=True)
+
+        self.block12=Block(728,1024,2,2,start_with_relu=True,grow_first=False)
+        self.dropout1 = nn.Dropout(nn.ValueChoice([0.25, 0.5, 0.75]))
+
+        self.conv3 = nn.LayerChoice([
+            nn.Conv2d(1024,1536,3,1,0,bias=False),
+            SeparableConv2d(1024,1536,3,1,0),
+            # DepthwiseSeparableConv(1024, 1536)
+        ])
+        self.bn3 = nn.BatchNorm2d(1536)
+
+        #do relu here
+        self.feature1 = nn.ValueChoice([2048, 4096])
+        self.conv4 = nn.LayerChoice([
+            nn.Conv2d(1536,self.feature1,3,1,1,bias=False),
+            SeparableConv2d(1536,self.feature1,3,1,1)
+        ])
+        self.bn4 = nn.BatchNorm2d(self.feature1)
+
+        self.fc = nn.Linear(self.feature1, last_dim)
+        self.dropout2 = nn.Dropout(nn.ValueChoice([0.25, 0.35, 0.45]))
+        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
+        
+        initialize_parameters(self)
+
+    def features(self, input):
+        x = self.conv1(input)
+        x = self.bn1(x)
+        x = self.relu(x)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.block4(x)
+        x = self.block5(x)
+        x = self.block6(x)
+        x = self.block7(x)
+        x = self.block8(x)
+        x = self.block9(x)
+        x = self.block10(x)
+        x = self.block11(x)
+        x = self.block12(x)
+        x = self.dropout1(x)
+
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+
+        x = self.conv4(x)
+        x = self.bn4(x)
+
+        return x
+
+    def logits(self, features):
+        x = self.relu(features)
+
+        x = F.adaptive_avg_pool2d(x, (1, 1))
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = self.dropout2(x)
+        return x
+
+    def forward(self, input):
+        x = self.features(input)
+        x = self.logits(x)
+        return x
+
+
 
 
 

@@ -18,14 +18,16 @@ from common_import import *
 #---------------------------------------------------------------------------------------------------
 # ハイパーパラメータなどの設定値
 
-# structure_name = 'XceptionNet'
-# structure_name = 'Vgg16'
-# structure_name = 'LightInceptionNetV1'
-# structure_name = 'EfficientNetV2S'
-structure_name = 'DenseNet201'
-epochs = 100
+
+# NNI特有パラメータ
+# strategy_name = 'Darts'
+strategy_name = 'Random'
+trial_num = 3
+
+structure_name = 'NNINet'
+epochs = 10
 gpu_count = GPU_COUNT
-batch_size_per_gpu = get_batch_size_per_gpu_raiden_celeb(structure_name)
+batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
 test_rate = 0.1
@@ -37,22 +39,22 @@ data_shuffle = True
 es_flg = False
 
 # data augmentation
-rotation_range=15.0
-width_shift_range=0.15
-height_shift_range=0.15
-brightness_range = 0.0
-shear_range=0.0
-zoom_range=0.1
-horizontal_flip=True
-vertical_flip=False
-# rotation_range=0.0
-# width_shift_range=0.0
-# height_shift_range=0.0
+# rotation_range=15.0
+# width_shift_range=0.15
+# height_shift_range=0.15
 # brightness_range = 0.0
 # shear_range=0.0
-# zoom_range=0.0
-# horizontal_flip=False
+# zoom_range=0.1
+# horizontal_flip=True
 # vertical_flip=False
+rotation_range=0.0
+width_shift_range=0.0
+height_shift_range=0.0
+brightness_range = 0.0
+shear_range=0.0
+zoom_range=0.0
+horizontal_flip=False
+vertical_flip=False
 
 
 projects_dir = "./projects_simple/"
@@ -74,9 +76,6 @@ projects_dir = "./projects_simple/"
 #---------------------------------------------------------------------------------------------------
 
 # 再開
-####################################################################################################
-# train_simple.py [porject名]
-####################################################################################################
 if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
     print("This is retraining.\n")
     first_training = False
@@ -91,6 +90,7 @@ if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
 
     params = loadParams(model_dir+"/params.json")
     structure_name = params['structure_name']
+    strategy_name = params['strategy_name']
     epochs = params['epochs']
     # trained_epochs = params['trained_epochs']
     batch_size_per_gpu = params['batch_size_per_gpu']
@@ -129,7 +129,7 @@ else:
     trained_epochs = 0
 
     t = now(format_str="%Y%m%d-%H%M%S")
-    model_dir = f'{projects_dir}{structure_name}_{t}_epoch{epochs}'
+    model_dir = f'{projects_dir}NNI_{strategy_name}_{t}_epoch{epochs}'
     cp_dir = f'{model_dir}/checkpoint'
 
 
@@ -140,7 +140,7 @@ print(f"START CREATE NETWORK: {now()}")
 model = globals()[structure_name](image_size[0],len(classes))
 if not first_training:
     model.load_state_dict(torch.load(cp_path)['model_state_dict'])
-torchsummary.summary(model.to('cpu'), image_size, device='cpu')
+# torchsummary.summary(model.to('cpu'), image_size, device='cpu')
 model = model.to(device)
 print(f"FINISH CREATE NETWORK: {now()}")
 print("\n\n")
@@ -228,9 +228,7 @@ test_metrics = getMetrics(device, mode="all", num_classes=len(classes), average=
 if first_training:
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(cp_dir, exist_ok=True)
-    print(f"CREATE (EXIST) DIRECTORY: '{structure_name}_{t}_epoch{epochs}'")
-else:
-    print(f"CREATE (EXIST) DIRECTORY: '{retrain_dir}'")
+    print(f"CREATE DIRECTORY: 'NNI_{strategy_name}_{t}_epoch{epochs}'")
 
 
 #---------------------------------------------------------------------------------------------------
@@ -238,6 +236,7 @@ else:
 if first_training:
     params = {}
     params["structure_name"] = structure_name
+    params["strategy_name"] = strategy_name
     params["epochs"] = epochs
     params["trained_epochs"] = 0
     params["batch_size_per_gpu"] = batch_size_per_gpu
@@ -263,6 +262,7 @@ if first_training:
 #---------------------------------------------------------------------------------------------------
 # 条件出力
 print("\tMODEL STRUCTURE: " + str(structure_name))
+print("\tNNI STRATEGY: " + str(strategy_name))
 print("\tEPOCHS: " + str(epochs))
 print("\tFIRST TRAINING: " + str(first_training))
 if not first_training:
@@ -293,39 +293,29 @@ print("\tVERTICAL FLIP: " + str(vertical_flip))
 print("\n\n")
 
 
-#---------------------------------------------------------------------------------------------------
-# callbacks
-callbacks = {}
-def on_epoch_end(**kwargs):
-    # trained_epochsのインクリメント
-    incrementTrainedEpochs(params_path=model_dir+"/params.json")
-    # history.jsonに保存
-    saveHistory(kwargs['history_epoch'],history_path=model_dir+"/history.json")
-callbacks['on_epoch_end'] = on_epoch_end
 
 
 #---------------------------------------------------------------------------------------------------
 # 学習
 print(f"START TRAINING: {now()}")
-train_history = train(
-    model,
-    device,
-    train_dataloader,
-    # validation_dataloader,
-    criterion,
-    optimizer,
-    epochs-trained_epochs,
-    initial_epoch=trained_epochs,
-    validation_dataloader=validation_dataloader,
-    cp_step=cp_period,
-    cp_path=cp_dir+"/cp_weights_{epoch:03d}-{accuracy:.4f}.pth",
-    project_dir=model_dir,
-    es_flg=es_flg,
-    metrics_dict=train_metrics,
-    callbacks=callbacks
-)
-print("Train Result: ")
-pprint(train_history)
+
+model_space = model
+search_strategy = strategy_random
+evaluator = FunctionalEvaluator(evaluate_model)
+exp = RetiariiExperiment(model_space, evaluator, [], search_strategy)
+exp_config = RetiariiExeConfig('local')
+exp_config.experiment_name = 'deepfake_search'
+exp_config.max_trial_number = 4   # spawn 4 trials at most
+exp_config.trial_concurrency = 2  # will run two trials concurrently
+exp_config.trial_gpu_number = GPU_COUNT
+exp_config.training_service.use_active_gpu = True
+exp.run(exp_config)
+
+
+for model_dict in exp.export_top_models(formatter='dict'):
+    print(model_dict)
+
+
 print(f"FINISH TRAINING: {now()}")
 print("\n\n")
 
@@ -338,7 +328,7 @@ torch.save(model.state_dict(), model_dir+'/model_weights.pth')
 #---------------------------------------------------------------------------------------------------
 # 評価
 print(f"START TEST: {now()}")
-test_history = test(
+test_history = test_epoch(
     model,
     device,
     test_dataloader,
@@ -407,6 +397,6 @@ print("\n\n")
 
 #---------------------------------------------------------------------------------------------------
 # 終了証明
-f = open(model_dir+"/finish_training", 'w')
+f = open(model_dir+"/fin", 'w')
 f.write('')  # 何も書き込まなくてファイルは作成されました
 f.close()

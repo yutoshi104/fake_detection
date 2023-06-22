@@ -1,7 +1,7 @@
 #!/bin/sh
 #$ -S /bin/bash # UGE-unique line, sets interpreter shell as bash
 #$ -cwd # setting work directory to current working directory, as in, this shell has to be in the same spot as the python script
-#$ -jc gtn-container_g8 # setting smallest possible GPU container for the test job
+#$ -jc gs-container_g8 # setting smallest possible GPU container for the test job
 #$ -ac d=aip-tensorflow-2012-opencv-1
 
 # load proper environment variables
@@ -22,5 +22,4 @@
 # /usr/bin/python -m pip install numpy==1.21
 
 # execute python script
-/usr/bin/python train_simple.py
-# /usr/bin/python train_simple.py EfficientNetV2L_20230521-172654_epoch50
+/usr/bin/python train_nni_multi_trial.py

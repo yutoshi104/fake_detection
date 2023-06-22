@@ -1,31 +1,28 @@
 
-####################################################################################################
-###実行コマンド###
-# nohup python train_simple.py > train_simple_`date +%Y%m%d_%H%M%S`.log &
-###強制終了コマンド###
-# jobs      (実行中のジョブ一覧)
-# kill 1    (1のジョブを強制終了)
-# fg 1      (1をフォアグランド実行に戻す)
-# ctrl+c    (強制終了)
-    # ctrl+z    (停止)
-    # bg %1     (1をバックグラウンド実行で再開)
-####################################################################################################
-
-
 from common_import import *
+
+from nni.nas.pytorch.darts import DartsNetwork, DartsMutator
+from nni.nas.pytorch.fixed import apply_fixed_architecture
+
+class MyNetwork(nn.Module):
+    def __init__(self):
+        super(MyNetwork, self).__init__()
+        self.darts = DartsNetwork(10, 10)  # Adjust parameters according to your needs.
+
+    def forward(self, x):
+        return self.darts(x)
+    
+
 
 
 #---------------------------------------------------------------------------------------------------
 # ハイパーパラメータなどの設定値
 
-# structure_name = 'XceptionNet'
-# structure_name = 'Vgg16'
-# structure_name = 'LightInceptionNetV1'
-# structure_name = 'EfficientNetV2S'
-structure_name = 'DenseNet201'
-epochs = 100
+
+epochs = 10
+warmup_epochs = 5
 gpu_count = GPU_COUNT
-batch_size_per_gpu = get_batch_size_per_gpu_raiden_celeb(structure_name)
+batch_size_per_gpu = 32
 batch_size = batch_size_per_gpu * gpu_count
 validation_rate = 0.1
 test_rate = 0.1
@@ -55,7 +52,7 @@ vertical_flip=False
 # vertical_flip=False
 
 
-projects_dir = "./projects_simple/"
+projects_dir = "./projects_darts/"
 
 
 
@@ -90,8 +87,8 @@ if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
         exit()
 
     params = loadParams(model_dir+"/params.json")
-    structure_name = params['structure_name']
     epochs = params['epochs']
+    warmup_epochs = params['warmup_epochs']
     # trained_epochs = params['trained_epochs']
     batch_size_per_gpu = params['batch_size_per_gpu']
     batch_size = batch_size_per_gpu * gpu_count
@@ -129,7 +126,7 @@ else:
     trained_epochs = 0
 
     t = now(format_str="%Y%m%d-%H%M%S")
-    model_dir = f'{projects_dir}{structure_name}_{t}_epoch{epochs}'
+    model_dir = f'{projects_dir}darts_{t}_epoch{epochs}'
     cp_dir = f'{model_dir}/checkpoint'
 
 
@@ -137,11 +134,15 @@ else:
 #---------------------------------------------------------------------------------------------------
 # ニューラルネットワークの生成
 print(f"START CREATE NETWORK: {now()}")
-model = globals()[structure_name](image_size[0],len(classes))
-if not first_training:
-    model.load_state_dict(torch.load(cp_path)['model_state_dict'])
-torchsummary.summary(model.to('cpu'), image_size, device='cpu')
-model = model.to(device)
+model = MyNetwork().to(device)
+mutator = DartsMutator(model)
+if (not first_training) and os.path.isfile(CHECKPOINT_PATH):
+    checkpoint = torch.load(cp_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    mutator.mutate(model, checkpoint['epoch'])
+    print(f"Loaded checkpoint '{CHECKPOINT_PATH}' (epoch {checkpoint['epoch']})")
+else:
+    print("No checkpoint found, starting from scratch.")
 print(f"FINISH CREATE NETWORK: {now()}")
 print("\n\n")
 
@@ -228,7 +229,7 @@ test_metrics = getMetrics(device, mode="all", num_classes=len(classes), average=
 if first_training:
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(cp_dir, exist_ok=True)
-    print(f"CREATE (EXIST) DIRECTORY: '{structure_name}_{t}_epoch{epochs}'")
+    print(f"CREATE (EXIST) DIRECTORY: 'darts_{t}_epoch{epochs}'")
 else:
     print(f"CREATE (EXIST) DIRECTORY: '{retrain_dir}'")
 
@@ -237,8 +238,8 @@ else:
 # パラメータ保存
 if first_training:
     params = {}
-    params["structure_name"] = structure_name
     params["epochs"] = epochs
+    params["warmup_epochs"] = warmup_epochs
     params["trained_epochs"] = 0
     params["batch_size_per_gpu"] = batch_size_per_gpu
     params["validation_rate"] = validation_rate
@@ -262,7 +263,7 @@ if first_training:
 
 #---------------------------------------------------------------------------------------------------
 # 条件出力
-print("\tMODEL STRUCTURE: " + str(structure_name))
+print("\tSTRATEGY: " + str("darts"))
 print("\tEPOCHS: " + str(epochs))
 print("\tFIRST TRAINING: " + str(first_training))
 if not first_training:
@@ -296,6 +297,14 @@ print("\n\n")
 #---------------------------------------------------------------------------------------------------
 # callbacks
 callbacks = {}
+def on_epoch_begin(**kwargs):
+    mutator.reset()
+callbacks['on_epoch_begin'] = on_epoch_begin
+def on_train_end(**kwargs):
+    if epoch >= args.warmup_epochs:
+        arch = mutator.export()
+        apply_fixed_architecture(kwargs['model'], arch)
+callbacks['on_epoch_begin'] = on_epoch_begin
 def on_epoch_end(**kwargs):
     # trained_epochsのインクリメント
     incrementTrainedEpochs(params_path=model_dir+"/params.json")
