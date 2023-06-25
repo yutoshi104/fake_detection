@@ -18,12 +18,14 @@ from common_import import *
 #---------------------------------------------------------------------------------------------------
 # ハイパーパラメータなどの設定値
 
-# structure_name = 'XceptionNet'
+debug_mode = True
+
+structure_name = 'XceptionNet'
 # structure_name = 'Vgg16'
 # structure_name = 'LightInceptionNetV1'
 # structure_name = 'EfficientNetV2S'
-structure_name = 'DenseNet201'
-epochs = 100
+# structure_name = 'DenseNet201'
+epochs = 4
 gpu_count = GPU_COUNT
 batch_size_per_gpu = get_batch_size_per_gpu_raiden_celeb(structure_name)
 batch_size = batch_size_per_gpu * gpu_count
@@ -80,6 +82,7 @@ projects_dir = "./projects_simple/"
 if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
     print("This is retraining.\n")
     first_training = False
+    debug_mode = False
 
     retrain_dir = sys.argv[1]
     model_dir = f'{projects_dir}{retrain_dir}'
@@ -197,6 +200,8 @@ data_num, class_file_num, class_weights = getCelebDataLoader(
     test_rate=test_rate,
     shuffle=data_shuffle
 )
+if debug_mode:
+    train_dataloader = validation_dataloader
 print(f"FINISH CREATE DATASET: {now()}")
 print("\n\n")
 
@@ -311,7 +316,6 @@ train_history = train(
     model,
     device,
     train_dataloader,
-    # validation_dataloader,
     criterion,
     optimizer,
     epochs-trained_epochs,

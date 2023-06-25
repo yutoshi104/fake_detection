@@ -1,10 +1,10 @@
 #!/bin/sh
 #$ -S /bin/bash
 #$ -cwd
-#$ -jc gs-container_g8
+#$ -jc gs-container_g16
 #$ -ac d=aip-tensorflow-2012-opencv-1
-#$ -e /home/toshi/fake_detection/automl/projects_simple/MnasNet_20230613-151058_epoch100/train_simple.sh.e$JOB_ID
-#$ -o /home/toshi/fake_detection/automl/projects_simple/MnasNet_20230613-151058_epoch100/train_simple.sh.o$JOB_ID
+#$ -e /home/toshi/fake_detection/automl/projects_simple/EfficientNetV2S_20230613-135513_epoch100/train_simple.sh.e$JOB_ID
+#$ -o /home/toshi/fake_detection/automl/projects_simple/EfficientNetV2S_20230613-135513_epoch100/train_simple.sh.o$JOB_ID
 
 
 . /fefs/opt/dgx/env_set/nvcr-tensorflow-2012-tf2-py3.sh
@@ -21,4 +21,4 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 /usr/bin/python -m pip install grad-cam
 /usr/bin/python -m pip freeze
 
-/usr/bin/python train_simple.py MnasNet_20230613-151058_epoch100
+/usr/bin/python train_simple.py EfficientNetV2S_20230613-135513_epoch100

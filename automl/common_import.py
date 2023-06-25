@@ -48,9 +48,6 @@ import torchsummary
 
 import nni
 import nni.retiarii.nn.pytorch as nn
-import nni.retiarii.strategy as strategy
-from nni.retiarii.evaluator import FunctionalEvaluator
-from nni.retiarii.experiment.pytorch import RetiariiExperiment, RetiariiExeConfig
 from nni.retiarii import model_wrapper
 print("NII VERSION: "+nni.__version__)
 print()
@@ -134,8 +131,14 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
         重みを保存するパス
     callback : dict or None
         コールバック関数。実行したい位置によって辞書のkeyを指定する。
-            on_epoch_begin  -> エポック開始前
-            on_epoch_end    -> エポック終了後
+            on_function_begin   -> 関数開始前
+            on_epoch_begin      -> エポック開始前
+            on_train_begin      -> 学習開始前
+            on_train_end        -> 学習終了後
+            on_validation_begin -> 検証開始前
+            on_validation_end   -> 検証終了後
+            on_epoch_end        -> エポック終了後
+            on_function_end     -> 関数終了後
     initial_epoch : int
         前回までに学習したエポック数。これまでに10エポック学習した場合、10を指定して11から学習開始。初回の学習の場合は0を指定。
     metrics_dict : dict
@@ -147,22 +150,28 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
         学習結果
     """
 
+    # callbackの実行
+    if (callbacks is not None) and ('on_function_begin' in callbacks) and callable(callbacks['on_function_begin']):
+        callbacks['on_function_begin'](model=model)
+
     # 変数
-    bar_length = 30 # プログレスバーの長さ
     val_flg = True if validation_dataloader is not None else False # validation_dataがあるか
-    train_batch_num = len(train_dataloader) # batchの総数
-    val_batch_num = len(validation_dataloader) if val_flg else 0 # batchの総数
     history = {'loss':[],'training_elapsed_time':[],'epoch_elapsed_time':[]} # 返り値用変数
     if val_flg:
         history['val_loss'] = []
         history['val_elapsed_time'] = []
-    accuracy = auc = precision = recall = specificity = f1 = None # format用変数
-    val_loss = val_accuracy = val_auc = val_precision = val_recall = val_specificity = val_f1 = None # format用変数
+
+    # history初期化
+    for k, _ in metrics_dict.items():
+        history[k] = []
+        if val_flg:
+            history["val_"+k] = []
 
     # 過去のhistoryを読み込み
     past_history = None
     if os.path.isfile(project_dir+"/history.json"):
         past_history = loadParams(filename=project_dir+"/history.json")
+    # print(past_history)
 
     # early stoppingを設定
     if es_flg:
@@ -174,22 +183,11 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
                     print('Losses have already risen more than {es_patience} times.')
                     return
 
-    # metricsからROCは削除
-    if 'roc' in metrics_dict:
-        metrics_dict.pop('roc')
-
-    # metrics初期化用
-    metrics_init = {}
-    for k, _ in metrics_dict.items():
-        history[k] = []
-        if val_flg:
-            history["val_"+k] = []
-        metrics_init[k] = []
-
     # 学習を繰り返し行う
     for epoch_idx in range(initial_epoch,initial_epoch+epoch):
         
         epoch_start_time = time.time()
+        history_epoch = {}
 
         # callbackの実行
         if (callbacks is not None) and ('on_epoch_begin' in callbacks) and callable(callbacks['on_epoch_begin']):
@@ -198,195 +196,64 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
         print_log(f"Epoch: {epoch_idx+1:>3}/{initial_epoch+epoch}")
 
         ###学習###
-
-        # callbackの実行
-        if (callbacks is not None) and ('on_train_begin' in callbacks) and callable(callbacks['on_train_begin']):
-            callbacks['on_train_begin'](model=model)
-
-        # モデルを訓練モードにする
-        model.train()
-
-        history_epoch = {}
-        losses = []
-        metrics = copy.deepcopy(metrics_init)
-        t_train = 0
-
-        batch_start_time = time.time()
-        for batch_idx, (inputs, labels) in enumerate(train_dataloader):
-
-            metric_batch = {}
-            inputs, labels = inputs.to(device), labels.to(device)
-
-            # optimizerを初期化
-            optimizer.zero_grad()
-
-            # ニューラルネットワークの処理を行う
-            outputs = model(inputs)
-
-            # 損失(出力とラベルとの誤差)の計算
-            loss = loss_fn(outputs, labels.float())
-            losses.append(loss.item())
-            metric_batch['loss'] = loss.item()
-
-            # その他のMetricsの計算
-            for k, fn in metrics_dict.items():
-                metric = fn(outputs,labels)
-                metrics[k].append(metric.item())
-                metric_batch[k] = metric.item()
-
-            # 勾配の計算
-            loss.backward()
-            # for name, param in model.named_parameters():
-            #     print(name, param.grad)
-
-            # 重みの更新
-            optimizer.step()
-
-            # プログレスバー表示
-            interval = time.time() - batch_start_time
-            t_train += interval
-            eta = str(datetime.timedelta(seconds= int((train_batch_num-batch_idx+1)*interval) ))
-            done = math.floor(bar_length * batch_idx / train_batch_num)
-            bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
-            print_log(f"\r  \033[K[{bar}] - ETA: {eta:>8}, {math.floor(batch_idx / train_batch_num*100):>3}% ({batch_idx}/{train_batch_num})", line_break=False)
-
-            # 学習状況の表示
-            for k,v in metric_batch.items():
-                print_log(f", {k.capitalize()}: {v:.04f}", line_break=False)
-
-            batch_start_time = time.time()
-
-        done = bar_length
-        bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
-        print_log(f"\r  \033[K[{bar}] - {int(t_train)}s, 100% ({train_batch_num}/{train_batch_num})", line_break=False)
-
-        # 学習状況の表示&保存
-        history['training_elapsed_time'].append(t_train)
-        history_epoch['training_elapsed_time'] = t_train
-        train_loss = sum(losses) / len(losses)
-        print_log(f", Loss: {train_loss:.04f}", line_break=False)
-        history['loss'].append(train_loss)
-        history_epoch['loss'] = train_loss
-        for k,v in metrics.items():
-            train_metric = sum(v) / len(v)
-            exec('{} = {}'.format(k, train_metric))
-            print_log(f", {k.capitalize()}: {train_metric:.04f}", line_break=False)
-            history[k].append(train_metric)
-            history_epoch[k] = train_metric
-            # format用
-            accuracy = train_metric if k=='accuracy' else accuracy
-            auc = train_metric if k=='auc' else auc
-            precision = train_metric if k=='precision' else precision
-            recall = train_metric if k=='recall' else recall
-            specificity = train_metric if k=='specificity' else specificity
-            f1 = train_metric if k=='f1' else f1
-        print_log()
-
-        # callbackの実行
-        if (callbacks is not None) and ('on_train_end' in callbacks) and callable(callbacks['on_train_end']):
-            callbacks['on_train_end'](model=model)
+        train_history = train_one_epoch(model, device, train_dataloader, loss_fn, optimizer, callbacks, metrics_dict)
+        for k, v in train_history.items():
+            history[k].append(v)
+            history_epoch[k] = v
 
         ###検証###
         if val_flg:
-            
-            # callbackの実行
-            if (callbacks is not None) and ('on_validation_begin' in callbacks) and callable(callbacks['on_validation_begin']):
-                callbacks['on_validation_begin'](model=model)
-
-            # モデルを評価モードにする
-            model.eval()
-
-            val_losses = []
-            val_metrics = copy.deepcopy(metrics_init)
-            t_validation = 0
-
-            with torch.no_grad():
-
-                batch_start_time = time.time()
-                for batch_idx, (inputs, labels) in enumerate(validation_dataloader):
-
-                    inputs, labels = inputs.to(device), labels.to(device)
-
-                    # ニューラルネットワークの処理を行う
-                    outputs = model(inputs)
-
-                    # 損失(出力とラベルとの誤差)の計算
-                    val_loss = loss_fn(outputs, labels.float())
-                    val_losses.append(val_loss.item())
-
-                    # その他のMetricsの計算
-                    for k, fn in metrics_dict.items():
-                        val_metric = fn(outputs,labels)
-                        val_metrics[k].append(val_metric.item())
-
-                    # プログレスバー表示
-                    interval = time.time() - batch_start_time
-                    t_validation += interval
-                    eta = str(datetime.timedelta(seconds= int((val_batch_num-batch_idx+1)*interval) ))
-                    done = math.floor(bar_length * batch_idx / val_batch_num)
-                    bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
-                    print_log(f"\r  \033[K[{bar}] - ETA: {eta:>8}, {math.floor(batch_idx / val_batch_num*100):>3}% ({batch_idx}/{val_batch_num})", line_break=False)
-
-                    batch_start_time = time.time()
-
-                done = bar_length
-                bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
-                print_log(f"\r  \033[K[{bar}] - {int(t_validation)}s, 100% ({val_batch_num}/{val_batch_num})", line_break=False)
-
-                # 検証の表示&保存
-                history['val_elapsed_time'].append(t_validation)
-                history_epoch['val_elapsed_time'] = t_validation
-                val_loss = sum(val_losses) / len(val_losses)
-                print_log(f", ValLoss: {val_loss:.04f}", line_break=False)
-                history['val_loss'].append(val_loss)
-                history_epoch['val_loss'] = val_loss
-                for k,v in val_metrics.items():
-                    val_metric = sum(v) / len(v)
-                    exec('{} = {}'.format("val_"+k, val_metric))
-                    print_log(f", Val{k.capitalize()}: {val_metric:.04f}", line_break=False)
-                    history["val_"+k].append(val_metric)
-                    history_epoch["val_"+k] = val_metric
-                    # format用
-                    val_accuracy = train_metric if k=='val_accuracy' else val_accuracy
-                    val_auc = train_metric if k=='val_auc' else val_auc
-                    val_precision = train_metric if k=='val_precision' else val_precision
-                    val_recall = train_metric if k=='val_recall' else val_recall
-                    val_specificity = train_metric if k=='val_specificity' else val_specificity
-                    val_f1 = train_metric if k=='val_f1' else val_f1
-                print_log()
-
-            # callbackの実行
-            if (callbacks is not None) and ('on_validation_end' in callbacks) and callable(callbacks['on_validation_end']):
-                callbacks['on_validation_end'](model=model)
+            validation_history = validation_one_epoch(model, device, validation_dataloader, loss_fn, callbacks, metrics_dict)
+            for k, v in validation_history.items():
+                history[k].append(v)
+                history_epoch[k] = v 
 
         # モデルの重みの保存(check point)
         if (cp_step is not None) and ((epoch_idx+1) % cp_step == 0):
             torch.save(
                 {
                     'epoch': epoch_idx+1,
-                    'loss': train_loss,
+                    'loss': train_history['loss'],
                     'model_state_dict': model.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
-                cp_path.format(epoch=epoch_idx+1, loss=train_loss, accuracy=accuracy, acc=accuracy, auc=auc, precision=precision, recall=recall, specificity=specificity, f1=f1, val_loss=val_loss, val_accuracy=val_accuracy, val_acc=val_accuracy, val_auc=val_auc, val_precision=val_precision, val_recall=val_recall, val_specificity=val_specificity, val_f1=val_f1)
+                cp_path.format(
+                    epoch=epoch_idx+1,
+                    loss=train_history['loss'],
+                    accuracy=train_history['accuracy'] if ('accuracy' in train_history) else None,
+                    acc=train_history['accuracy'] if ('accuracy' in train_history) else None,
+                    auc=train_history['auc'] if ('auc' in train_history) else None,
+                    precision=train_history['precision'] if ('precision' in train_history) else None,
+                    recall=train_history['recall'] if ('recall' in train_history) else None,
+                    specificity=train_history['specificity'] if ('specificity' in train_history) else None,
+                    f1=train_history['f1'] if ('f1' in train_history) else None,
+                    val_loss=validation_history['val_loss'] if val_flg and ('val_loss' in validation_history) else None,
+                    val_accuracy=validation_history['val_accuracy'] if val_flg and ('val_accuracy' in validation_history) else None,
+                    val_acc=validation_history['val_accuracy'] if val_flg and ('val_accuracy' in validation_history) else None,
+                    val_auc=validation_history['val_auc'] if val_flg and ('val_auc' in validation_history) else None,
+                    val_precision=validation_history['val_precision'] if val_flg and ('val_precision' in validation_history) else None,
+                    val_recall=validation_history['val_recall'] if val_flg and ('val_recall' in validation_history) else None,
+                    val_specificity=validation_history['val_specificity'] if val_flg and ('val_specificity' in validation_history) else None,
+                    val_f1=validation_history['val_f1'] if val_flg and ('val_f1' in validation_history) else None
+                )
             )
 
         # モデルの重みの保存(最良モデル)
-        if (past_history is not None) and (len(past_history['loss']) > 0) and loss < min(past_history['loss']):
+        if (past_history is not None) and (len(past_history['loss']) > 0) and (train_history['loss'] < min(past_history['loss'])):
             torch.save(
                 {
                     'epoch': epoch_idx+1,
-                    'loss': train_loss,
+                    'loss': train_history['loss'],
                     'model_state_dict': model.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 },
                 project_dir+"/min_loss.pth"
             )
-        if val_flg and (past_history is not None) and ('val_loss' in past_history) and (len(past_history['val_loss']) > 0) and (val_loss < min(past_history['val_loss'])):
+        if val_flg and (past_history is not None) and ('val_loss' in past_history) and (len(past_history['val_loss']) > 0) and (validation_history['val_loss'] < min(past_history['val_loss'])):
             torch.save(
                 {
                     'epoch': epoch_idx+1,
-                    'loss': train_loss,
+                    'loss': train_history['loss'],
                     'val_loss': val_loss,
                     'model_state_dict': model.module.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
@@ -397,11 +264,10 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
         # 時間計測
         epoch_time = time.time() - epoch_start_time
         history['epoch_elapsed_time'].append(epoch_time)
-        history_epoch['epoch_elapsed_time'] = epoch_time
 
         # early stopping
         if es_flg:
-            es(train_loss,model)
+            es(train_history['loss'],model)
             if es.early_stop:
                 print(f"Stop learning because the loss has risen more than {es_patience} times.")
                 break
@@ -410,8 +276,235 @@ def train(model, device, train_dataloader, loss_fn, optimizer, epoch, validation
         if (callbacks is not None) and ('on_epoch_end' in callbacks) and callable(callbacks['on_epoch_end']):
             callbacks['on_epoch_end'](epoch=epoch_idx+1, history_epoch=history_epoch, model=model)
 
+    # callbackの実行
+    if (callbacks is not None) and ('on_function_end' in callbacks) and callable(callbacks['on_function_end']):
+        callbacks['on_function_end'](model=model, history=history, last_history=history_epoch)
+
     return history
 
+
+def train_one_epoch(model, device, train_dataloader, loss_fn, optimizer, callbacks=None, metrics_dict={}):
+    """
+    pytorchのモデルを1エポックだけ学習する。
+    
+    Parameters
+    ----------
+    model : torch.nn.Module
+        学習対象のモデル
+    device : torch.cuda.device or str
+        使用するデバイス
+    train_dataloder : torch.utils.data.DataLoader
+        学習データ
+    loss_fn : torch.nn.lossFunctions
+        損失関数
+    optimizer : torch.optim.*
+        最適化関数
+    callback : dict or None
+        コールバック関数。実行したい位置によって辞書のkeyを指定する。
+            on_train_begin      -> 学習開始前
+            on_train_end        -> 学習終了後
+    metrics_dict : dict
+        計算したいMetricsの辞書を指定。getMetrics関数によって作成されたものをそのまま指定。
+
+    Returns
+    -------
+    history_epoch : dict
+        学習結果
+    """
+
+    # 変数
+    bar_length = 30 # プログレスバーの長さ
+    train_batch_num = len(train_dataloader) # batchの総数
+
+    # metricsからROCは削除
+    if 'roc' in metrics_dict:
+        metrics_dict.pop('roc')
+
+    # metrics
+    metrics = {}
+    for k, _ in metrics_dict.items():
+        metrics[k] = []
+
+    # callbackの実行
+    if (callbacks is not None) and ('on_train_begin' in callbacks) and callable(callbacks['on_train_begin']):
+        callbacks['on_train_begin'](model=model)
+
+    # モデルを訓練モードにする
+    model.train()
+
+    history_epoch = {}
+    losses = []
+    t_train = 0
+
+    batch_start_time = time.time()
+    for batch_idx, (inputs, labels) in enumerate(train_dataloader):
+
+        metric_batch = {}
+        inputs, labels = inputs.to(device), labels.to(device)
+
+        # optimizerを初期化
+        optimizer.zero_grad()
+
+        # ニューラルネットワークの処理を行う
+        outputs = model(inputs)
+
+        # 損失(出力とラベルとの誤差)の計算
+        loss = loss_fn(outputs, labels.float())
+        losses.append(loss.item())
+        metric_batch['loss'] = loss.item()
+
+        # その他のMetricsの計算
+        for k, fn in metrics_dict.items():
+            metric = fn(outputs,labels)
+            metrics[k].append(metric.item())
+            metric_batch[k] = metric.item()
+
+        # 勾配の計算
+        loss.backward()
+        # for name, param in model.named_parameters():
+        #     print(name, param.grad)
+
+        # 重みの更新
+        optimizer.step()
+
+        # プログレスバー表示
+        interval = time.time() - batch_start_time
+        t_train += interval
+        eta = str(datetime.timedelta(seconds= int((train_batch_num-batch_idx+1)*interval) ))
+        done = math.floor(bar_length * batch_idx / train_batch_num)
+        bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
+        print_log(f"\r  \033[K[{bar}] - ETA: {eta:>8}, {math.floor(batch_idx / train_batch_num*100):>3}% ({batch_idx}/{train_batch_num})", line_break=False)
+
+        # 学習状況の表示
+        for k,v in metric_batch.items():
+            print_log(f", {k.capitalize()}: {v:.04f}", line_break=False)
+
+        batch_start_time = time.time()
+
+    done = bar_length
+    bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
+    print_log(f"\r  \033[K[{bar}] - {int(t_train)}s, 100% ({train_batch_num}/{train_batch_num})", line_break=False)
+
+    # 学習状況の表示&保存
+    history_epoch['training_elapsed_time'] = t_train
+    train_loss = sum(losses) / len(losses)
+    print_log(f", Loss: {train_loss:.04f}", line_break=False)
+    history_epoch['loss'] = train_loss
+    for k,v in metrics.items():
+        train_metric = sum(v) / len(v)
+        exec('{} = {}'.format(k, train_metric))
+        print_log(f", {k.capitalize()}: {train_metric:.04f}", line_break=False)
+        history_epoch[k] = train_metric
+    print_log()
+
+    # callbackの実行
+    if (callbacks is not None) and ('on_train_end' in callbacks) and callable(callbacks['on_train_end']):
+        callbacks['on_train_end'](model=model)
+
+    return history_epoch
+
+
+def validation_one_epoch(model, device, validation_dataloader, loss_fn, callbacks=None, metrics_dict={}):
+    """
+    pytorchのモデルを1エポックだけ検証する。
+    
+    Parameters
+    ----------
+    model : torch.nn.Module
+        学習対象のモデル
+    device : torch.cuda.device or str
+        使用するデバイス
+    validation_dataloder : torch.utils.data.DataLoader
+        検証データ
+    loss_fn : torch.nn.lossFunctions
+        損失関数
+    callback : dict or None
+        コールバック関数。実行したい位置によって辞書のkeyを指定する。
+            on_validation_begin -> 検証開始前
+            on_validation_end   -> 検証終了後
+    metrics_dict : dict
+        計算したいMetricsの辞書を指定。getMetrics関数によって作成されたものをそのまま指定。
+
+    Returns
+    -------
+    history_epoch : dict
+        検証結果
+    """
+
+    # 変数
+    bar_length = 30 # プログレスバーの長さ
+    val_batch_num = len(validation_dataloader) # batchの総数
+
+    # metricsからROCは削除
+    if 'roc' in metrics_dict:
+        metrics_dict.pop('roc')
+
+    # metrics
+    val_metrics = {}
+    for k, _ in metrics_dict.items():
+        val_metrics[k] = []
+
+    # callbackの実行
+    if (callbacks is not None) and ('on_validation_begin' in callbacks) and callable(callbacks['on_validation_begin']):
+        callbacks['on_validation_begin'](model=model)
+
+    # モデルを評価モードにする
+    model.eval()
+
+    history_epoch = {}
+    val_losses = []
+    t_validation = 0
+
+    with torch.no_grad():
+
+        batch_start_time = time.time()
+        for batch_idx, (inputs, labels) in enumerate(validation_dataloader):
+
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            # ニューラルネットワークの処理を行う
+            outputs = model(inputs)
+
+            # 損失(出力とラベルとの誤差)の計算
+            val_loss = loss_fn(outputs, labels.float())
+            val_losses.append(val_loss.item())
+
+            # その他のMetricsの計算
+            for k, fn in metrics_dict.items():
+                val_metric = fn(outputs,labels)
+                val_metrics[k].append(val_metric.item())
+
+            # プログレスバー表示
+            interval = time.time() - batch_start_time
+            t_validation += interval
+            eta = str(datetime.timedelta(seconds= int((val_batch_num-batch_idx+1)*interval) ))
+            done = math.floor(bar_length * batch_idx / val_batch_num)
+            bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
+            print_log(f"\r  \033[K[{bar}] - ETA: {eta:>8}, {math.floor(batch_idx / val_batch_num*100):>3}% ({batch_idx}/{val_batch_num})", line_break=False)
+
+            batch_start_time = time.time()
+
+        done = bar_length
+        bar = '='*done + ("=" if done == bar_length else ">")  + "."*(bar_length-done)
+        print_log(f"\r  \033[K[{bar}] - {int(t_validation)}s, 100% ({val_batch_num}/{val_batch_num})", line_break=False)
+
+        # 検証の表示&保存
+        history_epoch['val_elapsed_time'] = t_validation
+        val_loss = sum(val_losses) / len(val_losses)
+        print_log(f", ValLoss: {val_loss:.04f}", line_break=False)
+        history_epoch['val_loss'] = val_loss
+        for k,v in val_metrics.items():
+            val_metric = sum(v) / len(v)
+            exec('{} = {}'.format("val_"+k, val_metric))
+            print_log(f", Val{k.capitalize()}: {val_metric:.04f}", line_break=False)
+            history_epoch["val_"+k] = val_metric
+        print_log()
+
+    # callbackの実行
+    if (callbacks is not None) and ('on_validation_end' in callbacks) and callable(callbacks['on_validation_end']):
+        callbacks['on_validation_end'](model=model)
+
+    return history_epoch
 
 
 ### 評価 ###
@@ -979,7 +1072,7 @@ def get_batch_size_per_gpu_raiden_celeb(structure_name):
         "DenseNet201": 64, #未検証
         "EfficientNetV2L": 32,
         "EfficientNetV2M": 64, #未検証
-        "EfficientNetV2S": 128, #未検証?実行中
+        "EfficientNetV2S": 128,
         "MnasNet": 128,
     }
     if structure_name in bs_dict:
@@ -2316,193 +2409,6 @@ class XceptionNet(nn.Module):
 
 
 
-
-
-
-####################################################################################################
-# モデル構造 (nni)
-####################################################################################################
-
-
-### 探索戦略取得 ###
-strategy_random = strategy.Random(dedup=True)
-
-# def getStrategy(strategy_name='random'):
-#     if lower(strategy_name) == 'random':
-#         strategy_instance = strategy.Random(dedup=True, seed=None)
-#         category = 'multi-trial'
-#     elif lower(strategy_name) == 'nas-rl':
-#         strategy_instance = strategy.PolicyBasedRL()
-#         category = 'multi-trial'
-#     elif lower(strategy_name) == 'random-oneshot':
-#         strategy_instance = strategy.RandomOneShot()
-#         category = 'one-shot'
-#     elif lower(strategy_name) == 'enas':
-#         strategy_instance = strategy.RandomOneShot()
-#         category = 'one-shot'
-
-#     return (strategy_instance, category)
-
-
-
-
-
-
-
-### モデル評価 ###
-def evaluate_model(model_cls):
-    global model, criterion, optimizer, transform, train_dataloader, validation_dataloader, test_data_loader
-    global epochs, trained_epochs, model_dir, cp_period, cp_dir, es_flg, train_metrics, test_metrics
-
-    callbacks = {}
-    def on_epoch_end(**kwargs):
-        # trained_epochsのインクリメント
-        incrementTrainedEpochs(params_path=model_dir+"/params.json")
-        # history.jsonに保存
-        saveHistory(kwargs['history_epoch'],history_path=model_dir+"/history.json")
-        # nniに保存
-        nni.report_intermediate_result(kwargs['val_acc'])
-    callbacks['on_epoch_end'] = on_epoch_end
-
-    train_epoch(
-        model,
-        device,
-        train_dataloader,
-        criterion,
-        optimizer,
-        epochs-trained_epochs,
-        initial_epoch=trained_epochs,
-        validation_dataloader=validation_dataloader,
-        cp_step=cp_period,
-        cp_path=cp_dir+"/cp_weights_{epoch:03d}-{accuracy:.4f}.pth",
-        project_dir=model_dir,
-        es_flg=es_flg,
-        metrics_dict=train_metrics,
-        callbacks=callbacks
-    )
-
-    test_history = test_epoch(
-        model,
-        device,
-        test_dataloader,
-        criterion,
-        metrics_dict=test_metrics
-    )
-    test_accuracy = test_history['accuracy']
-
-    # report final test result
-    nni.report_final_result(accuracy)
-
-
-@model_wrapper
-class NNINet(nn.Module):
-    def __init__(self, in_channels=1, num_classes=10):
-
-        super().__init__()
-
-        self.in_channels = in_channels
-        self.num_classes = num_classes
-        last_dim = 1 if num_classes==2 else num_classes
-
-        self.conv1 = nn.LayerChoice([
-            nn.Conv2d(in_channels,32,3,2,0,bias=False),
-            SeparableConv2d(in_channels,32,3,2,0),
-            # DepthwiseSeparableConv(in_channels, 32)
-        ])
-        self.bn1 = nn.BatchNorm2d(32)
-        self.relu = nn.ReLU(inplace=True)
-
-        self.conv2 = nn.LayerChoice([
-            nn.Conv2d(32,64,3,bias=False),
-            SeparableConv2d(32,64,3),
-            # DepthwiseSeparableConv(32, 64)
-        ])
-        self.bn2 = nn.BatchNorm2d(64)
-        #do relu here
-
-        self.block1=Block(64,128,2,2,start_with_relu=False,grow_first=True)
-        self.block2=Block(128,256,2,2,start_with_relu=True,grow_first=True)
-        self.block3=Block(256,728,2,2,start_with_relu=True,grow_first=True)
-
-        self.block4=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block5=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block6=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block7=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-
-        self.block8=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block9=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block10=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-        self.block11=Block(728,728,3,1,start_with_relu=True,grow_first=True)
-
-        self.block12=Block(728,1024,2,2,start_with_relu=True,grow_first=False)
-        self.dropout1 = nn.Dropout(nn.ValueChoice([0.25, 0.5, 0.75]))
-
-        self.conv3 = nn.LayerChoice([
-            nn.Conv2d(1024,1536,3,1,0,bias=False),
-            SeparableConv2d(1024,1536,3,1,0),
-            # DepthwiseSeparableConv(1024, 1536)
-        ])
-        self.bn3 = nn.BatchNorm2d(1536)
-
-        #do relu here
-        self.feature1 = nn.ValueChoice([2048, 4096])
-        self.conv4 = nn.LayerChoice([
-            nn.Conv2d(1536,self.feature1,3,1,1,bias=False),
-            SeparableConv2d(1536,self.feature1,3,1,1)
-        ])
-        self.bn4 = nn.BatchNorm2d(self.feature1)
-
-        self.fc = nn.Linear(self.feature1, last_dim)
-        self.dropout2 = nn.Dropout(nn.ValueChoice([0.25, 0.35, 0.45]))
-        self.last_activation = nn.Softmax(dim=1) if num_classes>2 else nn.Sigmoid()
-        
-        initialize_parameters(self)
-
-    def features(self, input):
-        x = self.conv1(input)
-        x = self.bn1(x)
-        x = self.relu(x)
-
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.block5(x)
-        x = self.block6(x)
-        x = self.block7(x)
-        x = self.block8(x)
-        x = self.block9(x)
-        x = self.block10(x)
-        x = self.block11(x)
-        x = self.block12(x)
-        x = self.dropout1(x)
-
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu(x)
-
-        x = self.conv4(x)
-        x = self.bn4(x)
-
-        return x
-
-    def logits(self, features):
-        x = self.relu(features)
-
-        x = F.adaptive_avg_pool2d(x, (1, 1))
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        x = self.dropout2(x)
-        return x
-
-    def forward(self, input):
-        x = self.features(input)
-        x = self.logits(x)
-        return x
 
 
 

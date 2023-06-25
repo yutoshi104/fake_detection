@@ -13,6 +13,10 @@
 
 
 from common_import import *
+from nni_import import *
+
+
+
 
 
 #---------------------------------------------------------------------------------------------------
@@ -20,11 +24,13 @@ from common_import import *
 
 
 # NNI特有パラメータ
-# strategy_name = 'Darts'
 strategy_name = 'Random'
-trial_num = 3
+max_trial_num = 3
 
-structure_name = 'NNINet'
+# モデル空間
+structure_name = 'NNISampleNet'
+
+
 epochs = 10
 gpu_count = GPU_COUNT
 batch_size_per_gpu = 32
@@ -39,25 +45,25 @@ data_shuffle = True
 es_flg = False
 
 # data augmentation
-# rotation_range=15.0
-# width_shift_range=0.15
-# height_shift_range=0.15
-# brightness_range = 0.0
-# shear_range=0.0
-# zoom_range=0.1
-# horizontal_flip=True
-# vertical_flip=False
-rotation_range=0.0
-width_shift_range=0.0
-height_shift_range=0.0
+rotation_range=15.0
+width_shift_range=0.15
+height_shift_range=0.15
 brightness_range = 0.0
 shear_range=0.0
-zoom_range=0.0
-horizontal_flip=False
+zoom_range=0.1
+horizontal_flip=True
 vertical_flip=False
+# rotation_range=0.0
+# width_shift_range=0.0
+# height_shift_range=0.0
+# brightness_range = 0.0
+# shear_range=0.0
+# zoom_range=0.0
+# horizontal_flip=False
+# vertical_flip=False
 
 
-projects_dir = "./projects_simple/"
+projects_dir = "./projects/"
 
 
 
@@ -80,17 +86,27 @@ if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
     print("This is retraining.\n")
     first_training = False
 
+    # 現在のトライアル数取得
     retrain_dir = sys.argv[1]
     model_dir = f'{projects_dir}{retrain_dir}'
-    cp_dir = f'{projects_dir}{retrain_dir}/checkpoint'
+    project_files = os.listdir(model_dir)
+    trial_dirs = sorted([f for f in project_files if os.path.isdir(os.path.join(path, f))])
+    trial_num = int(re.findall('trial(\d+)',trial_dirs[-1])[0])
+    trial_dir = f'{projects_dir}{retrain_dir}/trial{trial_num}'
+    cp_dir = f'{projects_dir}{retrain_dir}/trial{trial_num}/checkpoint'
 
     if 0 == len(glob.glob(cp_dir+'/*.pth')):
-        print("'"+retrain_dir+"' has no checkpoint.")
-        exit()
+        if trial_num == 1:
+            print("'"+retrain_dir+"' has no checkpoint.")
+            exit()
+        trial_num = int(re.findall('trial(\d+)',trial_dirs[-2])[0])
+        trial_dir = f'{projects_dir}{retrain_dir}/trial{trial_num}'
+        cp_dir = f'{projects_dir}{retrain_dir}/trial{trial_num}/checkpoint'
 
-    params = loadParams(model_dir+"/params.json")
-    structure_name = params['structure_name']
+    params = loadParams(trial_dir+"/params.json")
     strategy_name = params['strategy_name']
+    max_trial_num = params['max_trial_num']
+    structure_name = params['structure_name']
     epochs = params['epochs']
     # trained_epochs = params['trained_epochs']
     batch_size_per_gpu = params['batch_size_per_gpu']
@@ -118,9 +134,9 @@ if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
     # trained_epochsの記載と保存の差異合わせ
     trained_epochs = torch.load(cp_path)['epoch']
     params['trained_epochs'] = trained_epochs
-    saveParams(params,filename=model_dir+"/params.json")
+    saveParams(params,filename=trial_dir+"/params.json")
     # history.jsonの差異合わせ
-    adjustHistory(trained_epochs, history_path=model_dir+"/history.json")
+    adjustHistory(trained_epochs, history_path=trial_dir+"/history.json")
 
 # 初回
 else:
@@ -129,36 +145,32 @@ else:
     trained_epochs = 0
 
     t = now(format_str="%Y%m%d-%H%M%S")
-    model_dir = f'{projects_dir}NNI_{strategy_name}_{t}_epoch{epochs}'
-    cp_dir = f'{model_dir}/checkpoint'
+    model_dir = f'{projects_dir}{strategy_name}_{t}_epoch{epochs}'
+    trial_num = 1
+    trial_dir = f'{model_dir}/trial{trial_num}'
+    cp_dir = f'{trial_dir}/checkpoint'
 
 
 
 #---------------------------------------------------------------------------------------------------
-# ニューラルネットワークの生成
-print(f"START CREATE NETWORK: {now()}")
-model = globals()[structure_name](image_size[0],len(classes))
-if not first_training:
-    model.load_state_dict(torch.load(cp_path)['model_state_dict'])
-# torchsummary.summary(model.to('cpu'), image_size, device='cpu')
-model = model.to(device)
-print(f"FINISH CREATE NETWORK: {now()}")
+# モデル空間の生成
+print(f"START CREATE MODEL SPACE: {now()}")
+model_space = globals()[structure_name](image_size[0],len(classes))
+print(f"FINISH CREATE MODEL SPACE: {now()}")
 print("\n\n")
 
 
 #---------------------------------------------------------------------------------------------------
-# Multi GPU使用宣言
-if str(device) == 'cuda':
-    model = torch.nn.DataParallel(model)
-    torch.backends.cudnn.benchmark = True
-    print("Multi GPU OK.")
-    print("\n\n")
+# 探索戦略取得
+print(f"START CREATE STRATEGY: {now()}")
+strategy = globals()["strategy"+strategy_name]
+print(f"FINISH CREATE STRATEGY: {now()}")
+print("\n\n")
 
 
 
 #---------------------------------------------------------------------------------------------------
 # 変換方法の指定
-
 transform = getTransforms(
     rotation_range=rotation_range,
     width_shift_range=width_shift_range,
@@ -208,16 +220,6 @@ criterion = getCriterion(class_weights,device)
 
 
 #---------------------------------------------------------------------------------------------------
-# 最適化手法の設定
-optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
-if not first_training:
-    optimizer.load_state_dict(torch.load(cp_path)['optimizer_state_dict'])
-    for state in optimizer.state.values():
-        for k, v in state.items():
-            if isinstance(v, torch.Tensor):
-                state[k] = v.to(device)
-
-#---------------------------------------------------------------------------------------------------
 # Metrics取得
 train_metrics = getMetrics(device, mode="all", num_classes=len(classes), average='none')
 test_metrics = getMetrics(device, mode="all", num_classes=len(classes), average='none')
@@ -227,16 +229,18 @@ test_metrics = getMetrics(device, mode="all", num_classes=len(classes), average=
 # ディレクトリ作成
 if first_training:
     os.makedirs(model_dir, exist_ok=True)
+    os.makedirs(trial_dir, exist_ok=True)
     os.makedirs(cp_dir, exist_ok=True)
-    print(f"CREATE DIRECTORY: 'NNI_{strategy_name}_{t}_epoch{epochs}'")
+    print(f"CREATE DIRECTORY: '{strategy_name}_{t}_epoch{epochs}'")
 
 
 #---------------------------------------------------------------------------------------------------
 # パラメータ保存
 if first_training:
     params = {}
-    params["structure_name"] = structure_name
     params["strategy_name"] = strategy_name
+    params["max_trial_num"] = max_trial_num
+    params["structure_name"] = structure_name
     params["epochs"] = epochs
     params["trained_epochs"] = 0
     params["batch_size_per_gpu"] = batch_size_per_gpu
@@ -256,13 +260,14 @@ if first_training:
     params["zoom_range"] = zoom_range
     params["horizontal_flip"] = horizontal_flip
     params["vertical_flip"] = vertical_flip
-    saveParams(params,filename=model_dir+"/params.json")
+    saveParams(params,filename=trial_dir+"/params.json")
 
 
 #---------------------------------------------------------------------------------------------------
 # 条件出力
-print("\tMODEL STRUCTURE: " + str(structure_name))
-print("\tNNI STRATEGY: " + str(strategy_name))
+print("\tSTRATEGY: " + str(strategy_name))
+print("\tMAX TRIAL NUM: " + str(max_trial_num))
+print("\tMODEL SPACE: " + str(structure_name))
 print("\tEPOCHS: " + str(epochs))
 print("\tFIRST TRAINING: " + str(first_training))
 if not first_training:
@@ -298,23 +303,14 @@ print("\n\n")
 #---------------------------------------------------------------------------------------------------
 # 学習
 print(f"START TRAINING: {now()}")
-
-model_space = model
-search_strategy = strategy_random
-evaluator = FunctionalEvaluator(evaluate_model)
-exp = RetiariiExperiment(model_space, evaluator, [], search_strategy)
+exp = RetiariiExperiment(model_space, evaluator, [], strategy)
 exp_config = RetiariiExeConfig('local')
-exp_config.experiment_name = 'deepfake_search'
-exp_config.max_trial_number = 4   # spawn 4 trials at most
-exp_config.trial_concurrency = 2  # will run two trials concurrently
-exp_config.trial_gpu_number = GPU_COUNT
+exp_config.experiment_name = 'deepfake detection'
+exp_config.max_trial_number = max_trial_num
+exp_config.trial_concurrency = 1
+exp_config.trial_gpu_number = 1
 exp_config.training_service.use_active_gpu = True
-exp.run(exp_config)
-
-
-for model_dict in exp.export_top_models(formatter='dict'):
-    print(model_dict)
-
+exp.run(exp_config, 8080)
 
 print(f"FINISH TRAINING: {now()}")
 print("\n\n")
@@ -322,7 +318,7 @@ print("\n\n")
 
 #---------------------------------------------------------------------------------------------------
 # モデル構造保存
-torch.save(model.state_dict(), model_dir+'/model_weights.pth')
+torch.save(model.state_dict(), trial_dir+'/model_weights.pth')
 
 
 #---------------------------------------------------------------------------------------------------
@@ -346,7 +342,7 @@ print("\n\n")
 # テストして保存
 saveTest(
     data_num=20,
-    file_path=model_dir+"/test.jpg",
+    file_path=trial_dir+"/test.jpg",
     model=model,
     data_dir=data_dir,
     classes=classes,
@@ -357,7 +353,7 @@ saveTest(
 #     model,
 #     # device,
 #     data_num=4,
-#     file_path=model_dir+"/heatmap.jpg",
+#     file_path=trial_dir+"/heatmap.jpg",
 #     data_dir=data_dir,
 #     classes=classes,
 #     validation_rate=validation_rate,
@@ -369,13 +365,13 @@ saveTest(
 # 結果グラフ描画
 print(f"START DRAW RESULT: {now()}")
 
-all_history = loadParams(filename=model_dir+'/history.json')
+all_history = loadParams(filename=trial_dir+'/history.json')
 
 # loss描画
 graph_data_loss = {'loss':all_history['loss']}
 if 'val_loss' in all_history:
     graph_data_loss['val_loss'] = all_history['val_loss']
-saveLossGraph(graph_data_loss, save_path=model_dir+'/loss.png', title='Model Loss (of this training)')
+saveLossGraph(graph_data_loss, save_path=trial_dir+'/loss.png', title='Model Loss (of this training)')
 
 # accuracy描画
 graph_data_acc = {}
@@ -384,11 +380,11 @@ if 'accuracy' in all_history:
 if 'val_accuracy' in all_history:
     graph_data_acc['val_accuracy'] = all_history['val_accuracy']
 if graph_data_acc != {}:
-    saveLossGraph(graph_data_acc, save_path=model_dir+'/accuracy.png', title='Model Accuracy (of this training)')
+    saveLossGraph(graph_data_acc, save_path=trial_dir+'/accuracy.png', title='Model Accuracy (of this training)')
 
 # ROC曲線描画
 if 'roc' in test_history:
-    saveRocCurve(test_history['roc'], save_path=model_dir+'/roc.png', title='ROC Curve (of this training)')
+    saveRocCurve(test_history['roc'], save_path=trial_dir+'/roc.png', title='ROC Curve (of this training)')
 
 print(f"FINISH DRAW RESULT: {now()}")
 print("\n\n")
@@ -397,6 +393,6 @@ print("\n\n")
 
 #---------------------------------------------------------------------------------------------------
 # 終了証明
-f = open(model_dir+"/fin", 'w')
+f = open(trial_dir+"/fin", 'w')
 f.write('')  # 何も書き込まなくてファイルは作成されました
 f.close()
