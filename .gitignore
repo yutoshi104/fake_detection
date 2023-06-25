@@ -25,6 +25,7 @@ __pycache__/
 !/model/**/history.json
 !/model/**/params.json
 !/model/**/result.png
+/automl/projects
 /automl/projects_simple
 /automl/data
 /automl/*.sh.e*
