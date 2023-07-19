@@ -679,6 +679,7 @@ def getMetrics(device, mode='all', num_classes=2, average='micro'):
 
 ### transform作成 ###
 def getTransforms(
+        image_size=None,#(3,256,256),
         normalization=False,
         rotation_range=0.0,
         width_shift_range=0.0,
@@ -696,6 +697,10 @@ def getTransforms(
     transform_list = [
         torchvision.transforms.ToTensor(),  # テンソル化 & 正規化
     ]
+
+    # 画像サイズ
+    if image_size is not None:
+        transform_list.append(torchvision.transforms.Resize(image_size[1:]))
 
     # 0〜1 → -1〜1
     if normalization:
@@ -813,6 +818,19 @@ def saveRocCurve(roc_data, save_path='roc.png', title='ROC Curve'):
     plt.legend()
     plt.savefig(save_path)
     plt.clf()
+
+
+### モデルサイズ取得 ###
+def get_model_memory_size(model):
+    type_sizes = {
+        torch.float32: 4,
+        torch.float16: 2,
+        torch.float64: 8
+    }
+    total_memory_size = 0
+    for p in model.parameters():
+        total_memory_size += p.numel() * type_sizes[p.dtype]
+    return total_memory_size
 
 
 ### jsonパラメータ保存 ###
