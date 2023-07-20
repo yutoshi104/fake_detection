@@ -698,6 +698,10 @@ def getTransforms(
         torchvision.transforms.ToTensor(),  # テンソル化 & 正規化
     ]
 
+    # グレースケール
+    if (image_size is not None) and (image_size[0]==1):
+        transform_list.append(torchvision.transforms.Grayscale())
+
     # 画像サイズ
     if image_size is not None:
         transform_list.append(torchvision.transforms.Resize(image_size[1:]))
