@@ -1142,6 +1142,7 @@ def get_batch_size_per_gpu_ghpc(structure_name):
 def makeImagePathList_Celeb(
         data_dir=os.getenv('FAKE_DATA_PATH'),
         classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
+        train_rate=None,
         validation_rate=0.1,
         test_rate=0.1,
         data_type=None
@@ -1155,9 +1156,18 @@ def makeImagePathList_Celeb(
     train_data = []
     validation_data = []
     test_data = []
-    train_rate = 1 - validation_rate - test_rate
-    s1 = (int)(59*train_rate)
-    s2 = (int)(59*(train_rate+validation_rate))
+    if train_rate is None:
+        train_rate = 1 - validation_rate - test_rate
+        s1 = (int)(59*train_rate)
+        s2 = (int)(59*(train_rate+validation_rate))
+        s3 = (int)(59)
+    elif (train_rate + validation_rate + test_rate) > 1:
+        print(f"Cannot be split. (train_rate:{train_rate}, validation_rate:{validation_rate}, test_rate:{test_rate})")
+        exit()
+    else:
+        s1 = (int)(59*train_rate)
+        s2 = (int)(59*(train_rate+validation_rate))
+        s3 = (int)(59*(train_rate+validation_rate+test_rate))
     id_list = list(range(62))
     id_list.remove(14)
     id_list.remove(15)
@@ -1165,7 +1175,7 @@ def makeImagePathList_Celeb(
     # random.shuffle(id_list)
     train_id_list = id_list[ : s1]
     validation_id_list = id_list[s1 : s2]
-    test_id_list = id_list[s2 : ]
+    test_id_list = id_list[s2 : s3]
     print("\tTRAIN IMAGE DATA ID: ",end="")
     print(train_id_list)
     print("\tVALIDATION IMAGE DATA ID: ",end="")
@@ -1272,6 +1282,7 @@ def getCelebDataLoader(
         data_dir=os.getenv('FAKE_DATA_PATH'),
         classes=['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90'],
         image_size=(3,256,256),
+        train_rate=None,
         validation_rate=0,
         test_rate=0,
         shuffle=False
@@ -1281,6 +1292,7 @@ def getCelebDataLoader(
     celeb_paths = makeImagePathList_Celeb(
         data_dir=data_dir,
         classes=classes,
+        train_rate=train_rate,
         validation_rate=validation_rate,
         test_rate=test_rate,
         data_type='all'

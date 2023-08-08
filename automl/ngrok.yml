@@ -1,0 +1,6 @@
+tunnels:
+  first:
+    addr: 5000
+    proto: http
+    inspect: false
+http_proxy: "http://10.1.10.1:8080/"

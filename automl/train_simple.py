@@ -18,23 +18,25 @@ from common_import import *
 #---------------------------------------------------------------------------------------------------
 # ハイパーパラメータなどの設定値
 
-debug_mode = True
+debug_mode = False
 
 structure_name = 'XceptionNet'
 # structure_name = 'Vgg16'
 # structure_name = 'LightInceptionNetV1'
 # structure_name = 'EfficientNetV2S'
-# structure_name = 'DenseNet201'
-epochs = 4
+# structure_name = 'EfficientNetB7'
+# structure_name = 'MobileNetV3L'
+epochs = 50
 gpu_count = GPU_COUNT
 batch_size_per_gpu = get_batch_size_per_gpu_raiden_celeb(structure_name)
 batch_size = batch_size_per_gpu * gpu_count
-validation_rate = 0.1
-test_rate = 0.1
+train_rate = 0.15
+validation_rate = 0.15
+test_rate = 0.15
 cp_period = 2
 data_dir = os.getenv('FAKE_DATA_PATH')
 classes = ['Celeb-real-image-face-90', 'Celeb-synthesis-image-face-90']
-image_size = (3, 256, 256)
+image_size = (3, 128, 128)
 data_shuffle = True
 es_flg = False
 
@@ -98,6 +100,7 @@ if len(sys.argv) >= 2 and os.path.isdir(projects_dir+sys.argv[1]):
     # trained_epochs = params['trained_epochs']
     batch_size_per_gpu = params['batch_size_per_gpu']
     batch_size = batch_size_per_gpu * gpu_count
+    train_rate = params['train_rate'] if ('train_rate' in params) else None
     validation_rate = params['validation_rate']
     test_rate = params['test_rate']
     cp_period = params['cp_period']
@@ -163,6 +166,7 @@ if str(device) == 'cuda':
 # 変換方法の指定
 
 transform = getTransforms(
+    image_size=image_size,
     rotation_range=rotation_range,
     width_shift_range=width_shift_range,
     height_shift_range=height_shift_range,
@@ -196,6 +200,7 @@ data_num, class_file_num, class_weights = getCelebDataLoader(
     data_dir=data_dir,
     classes=classes,
     image_size=image_size,
+    train_rate=train_rate,
     validation_rate=validation_rate,
     test_rate=test_rate,
     shuffle=data_shuffle

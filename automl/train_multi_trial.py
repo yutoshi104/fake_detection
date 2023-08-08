@@ -310,7 +310,7 @@ exp_config.max_trial_number = max_trial_num
 exp_config.trial_concurrency = 1
 exp_config.trial_gpu_number = 1
 exp_config.training_service.use_active_gpu = True
-exp.run(exp_config, 8080)
+exp.run(exp_config, 5000)
 
 print(f"FINISH TRAINING: {now()}")
 print("\n\n")
