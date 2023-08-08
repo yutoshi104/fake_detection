@@ -1317,9 +1317,12 @@ def getCelebDataLoader(
     print("data num: "+str(data_num))
     print("class file num: "+str(class_file_num))
     print("class weights: "+str(class_weights))
+    print("train data num: "+str(len(train_dataset)))
+    print("validation data num: "+str(len(validation_dataset) if validation_rate>0 else 0))
+    print("test data num: "+str(len(test_dataset) if test_rate>0 else 0))
     print("train data batch num: "+str(len(train_dataloader)))
-    print("validation data batch num: "+str(len(validation_dataloader)))
-    print("test data batch num: "+str(len(test_dataloader)))
+    print("validation data batch num: "+str(len(validation_dataloader) if validation_rate>0 else 0))
+    print("test data batch num: "+str(len(test_dataloader) if test_rate>0 else 0))
 
     return (train_dataloader, validation_dataloader, test_dataloader, data_num, class_file_num, class_weights)
 
